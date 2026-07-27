@@ -340,17 +340,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center space-x-3 sm:space-x-4">
-            {/* Theme Toggle Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleCycleTheme}
-              className="border border-zinc-200 dark:border-zinc-800"
-              title={`Theme: ${settings.theme}`}
-            >
-              <ThemeIcon />
-            </Button>
-
             {/* Notification Trigger Button */}
             <Button 
               variant="ghost" 

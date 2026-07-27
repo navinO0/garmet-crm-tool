@@ -124,12 +124,7 @@ export default function SettingsPage() {
             >
               <FileText className="mr-2 h-4 w-4 shrink-0" /> Invoice Settings
             </TabsTrigger>
-            <TabsTrigger
-              value="appearance"
-              className="w-full text-left justify-start font-bold text-xs py-2.5 px-3 uppercase tracking-wide data-[state=active]:bg-zinc-50 dark:data-[state=active]:bg-zinc-800/80"
-            >
-              <Palette className="mr-2 h-4 w-4 shrink-0" /> Appearance
-            </TabsTrigger>
+
             <TabsTrigger
               value="branding"
               className="w-full text-left justify-start font-bold text-xs py-2.5 px-3 uppercase tracking-wide data-[state=active]:bg-zinc-50 dark:data-[state=active]:bg-zinc-800/80"
@@ -269,41 +264,7 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
-          {/* Tab 3: Appearance & theme */}
-          <TabsContent value="appearance" className="mt-0">
-            <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-              <CardHeader>
-                <CardTitle className="text-base font-bold tracking-tight">Appearance & Themes</CardTitle>
-                <CardDescription className="text-xs">Toggle dark theme styles for work at night.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-3">
-                    {["light", "dark", "system"].map((mode) => {
-                      const isActive = settings.theme === mode;
-                      return (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => handleThemeChange(mode as any)}
-                          className={cn(
-                            "flex flex-col items-center justify-center p-4 border rounded-md transition-all text-xs font-semibold capitalize bg-zinc-50/50 hover:bg-zinc-50/80 dark:bg-zinc-950/20 dark:hover:bg-zinc-950/40",
-                            isActive ? "border-zinc-950 bg-zinc-100 dark:border-white dark:bg-zinc-800/80" : "border-zinc-200 dark:border-zinc-800"
-                          )}
-                        >
-                          <span className="text-sm font-bold">{mode}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="bg-zinc-50/50 border dark:bg-zinc-950/20 p-4 rounded-md text-[10px] leading-relaxed text-zinc-455 flex items-start gap-2">
-                    <Globe className="h-4 w-4 text-zinc-400 shrink-0 mt-0.5" />
-                    <span>System Theme detects the OS preference on mobile or computers and syncs the color schemes automatically.</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+
 
           {/* Tab 4: Branding / Logo upload mockup */}
           <TabsContent value="branding" className="mt-0">
