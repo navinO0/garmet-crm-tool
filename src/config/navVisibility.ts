@@ -5,7 +5,6 @@ export interface NavVisibilityConfig {
 export const DEFAULT_NAV_VISIBILITY: NavVisibilityConfig = {
   "/customers": true,
   "/orders": true,
-  "/production": true,
   "/invoices": true,
   "/": false,
   "/payments": false,

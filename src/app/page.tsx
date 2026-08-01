@@ -1,523 +1,543 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
-import { useProductionStore } from "@/store/productionStore";
-import { cn } from "@/lib/utils";
-import { MetricCard, ChartCard, StatusBadge } from "@/components/shared/ReusableComponents";
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { BoutiqueSection } from '@/components/boutique/BoutiqueSection';
+import { ClientForm, ClientData } from '@/components/bulk/ClientForm';
+import { BulkOrderForm, BulkOrderFormData } from '@/components/bulk/BulkOrderForm';
+import { AgreementSignatureSection, AgreementData } from '@/components/bulk/AgreementSignatureSection';
+import { OrderLifecycleModal } from '@/components/bulk/OrderLifecycleModal';
+import { clientSchema } from '@/lib/validations/schemas';
 import {
-  ShoppingBag,
-  Clock,
-  Wrench,
-  CheckCircle,
-  DollarSign,
-  AlertTriangle,
-  ArrowRight,
-  TrendingUp,
+  Scissors,
+  Layers,
+  FileText,
+  CheckCircle2,
+  HardDrive,
+  ExternalLink,
+  PlusCircle,
+  Loader2,
+  Building,
   User,
-  Activity,
-  Calendar as CalendarIcon,
-} from "lucide-react";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  BarChart,
-  Bar,
-  Cell,
-  PieChart,
-  Pie,
-} from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+  ShoppingBag,
+  ShieldCheck,
+  ChevronRight,
+  Edit,
+  Clock,
+  RotateCcw,
+  Image as ImageIcon,
+} from 'lucide-react';
+import { useProductionStore } from '@/store/productionStore';
 
-export default function Dashboard() {
-  const [isMounted, setIsMounted] = useState(false);
-  const { orders, payments, activities, settings } = useProductionStore();
+function DashboardContent() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab') as 'bulk' | 'boutique' | 'orders' | null;
+
+  const [activeTab, setActiveTab] = useState<'bulk' | 'boutique' | 'orders'>('bulk');
+  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Selected Order for Lifecycle Management Modal
+  const [selectedOrderForLifecycle, setSelectedOrderForLifecycle] = useState<any>(null);
+
+  // Sync state with URL query param if present
+  useEffect(() => {
+    if (tabParam && ['bulk', 'boutique', 'orders'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
+  // Stored orders state from SQLite / API
+  const [savedOrders, setSavedOrders] = useState<any[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(false);
+
+  // Form State
+  const [clientData, setClientData] = useState<ClientData>({
+    clientName: '',
+    businessName: '',
+    mobileNumber: '',
+    email: '',
+    address: '',
+  });
+
+  const [orderData, setOrderData] = useState<BulkOrderFormData>({
+    items: [
+      {
+        itemDescription: 'Bridal Lehenga Choli Set',
+        category: 'Bridal / Heavy',
+        quantity: 25,
+        unitRate: 1500,
+        fabricDetails: '4.5m Velvet + 3m Satin Lining provided by client',
+        sizeBreakdown: 'S: 5, M: 10, L: 8, XL: 2',
+        priceBreakup: {
+          baseStitching: 800,
+          liningCanvas: 300,
+          handworkEmbroidery: 300,
+          finishingLatkan: 100,
+        },
+      },
+    ],
+    shippingCharges: 1200,
+    packingCharges: 800,
+    estimatedDelivery: '25 Working Days',
+    deliverySchedule: 'Single Complete Dispatch',
+    fabricProcurement: 'Directly paid by client to fabric vendor',
+    packingBrandingNotes: 'Includes brand label, size tag, wash care tag & transparent cover',
+    materialReceivedDetails: 'Received 50 meters Velvet fabric + 30 meters satin lining on 30-July-2026.',
+    referenceImages: [],
+    materialImages: [],
+  });
+
+  const [agreementData, setAgreementData] = useState<AgreementData>({
+    clientSignatoryName: '',
+    clientDesignation: 'Proprietor',
+    clientSignature: '',
+    witnessName: '',
+    witnessMobile: '',
+    witnessSignature: '',
+    clientInitials: 'RS',
+    labelInitials: 'RL',
+    ipAccepted: true,
+    termsAccepted: true,
+  });
+
+  const [completedOrderResult, setCompletedOrderResult] = useState<any>(null);
+
+  // Load past orders from SQLite
+  const fetchOrders = async () => {
+    try {
+      setIsLoadingOrders(true);
+      const res = await fetch('/api/bulk-orders');
+      const data = await res.json();
+      if (data.success) {
+        setSavedOrders(data.orders || []);
+      }
+    } catch (e) {
+      console.error('Failed to fetch orders:', e);
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  };
 
   useEffect(() => {
-    setIsMounted(true);
+    fetchOrders();
   }, []);
 
-  // Compute metrics from real state
-  const metrics = useMemo(() => {
-    const totalOrders = orders.length;
-    const pendingOrders = orders.filter((o) => o.status !== "Completed" && o.status !== "Delivered").length;
-    const inProduction = orders.filter((o) =>
-      ["Cutting", "Stitching", "Embroidery", "QC"].includes(o.status)
-    ).length;
-    const delivered = orders.filter((o) => ["Delivered", "Completed"].includes(o.status)).length;
-    
-    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
-    const totalEstimated = orders.reduce((sum, o) => sum + o.estimate.total, 0);
-    const pendingPayments = Math.max(0, totalEstimated - totalRevenue);
-
-    return {
-      totalOrders,
-      pendingOrders,
-      inProduction,
-      delivered,
-      totalRevenue,
-      pendingPayments,
-    };
-  }, [orders, payments]);
-
-  // Compute recent orders
-  const recentOrders = useMemo(() => {
-    return [...orders]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5);
-  }, [orders]);
-
-  // Compute upcoming deliveries (not completed/delivered, sorted by date ascending)
-  const upcomingDeliveries = useMemo(() => {
-    return orders
-      .filter((o) => o.status !== "Completed" && o.status !== "Delivered")
-      .sort((a, b) => new Date(a.deliveryDate).getTime() - new Date(b.deliveryDate).getTime())
-      .slice(0, 5);
-  }, [orders]);
-
-  // Compute charts data
-  const chartsData = useMemo(() => {
-    // 1. Monthly Revenue
-    // Let's aggregate payments by month
-    const months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
-    const baseRevenue = { Feb: 12000, Mar: 14500, Apr: 11000, May: 18000, Jun: 24000, Jul: 0 };
-    
-    // Add real payments to June/July depending on payment date
-    payments.forEach((p) => {
-      const date = new Date(p.date);
-      const m = date.toLocaleString("en-US", { month: "short" });
-      if (m in baseRevenue) {
-        // @ts-ignore
-        baseRevenue[m] += p.amount;
-      } else if (m === "Jul") {
-        baseRevenue["Jul"] += p.amount;
+  // Load draft state from localStorage on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const savedDraft = localStorage.getItem('garment_bulk_order_draft');
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed.clientData && parsed.clientData.clientName) setClientData(parsed.clientData);
+        if (parsed.orderData && parsed.orderData.items) setOrderData(parsed.orderData);
+        if (parsed.agreementData) setAgreementData(parsed.agreementData);
+        if (parsed.currentStep && typeof parsed.currentStep === 'number') setCurrentStep(parsed.currentStep);
+      } catch (e) {
+        console.error('Failed to parse draft from localStorage:', e);
       }
-    });
+    }
+  }, []);
 
-    const revenueChart = Object.entries(baseRevenue).map(([name, value]) => ({
-      name,
-      Revenue: value,
-    }));
+  // Auto-save form draft state to localStorage whenever changed
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const draft = { clientData, orderData, agreementData, currentStep };
+    localStorage.setItem('garment_bulk_order_draft', JSON.stringify(draft));
+  }, [clientData, orderData, agreementData, currentStep]);
 
-    // 2. Orders Chart (number of orders created per month)
-    const baseOrdersCount = { Feb: 8, Mar: 12, Apr: 10, May: 15, Jun: 20, Jul: 0 };
-    orders.forEach((o) => {
-      const date = new Date(o.createdAt);
-      const m = date.toLocaleString("en-US", { month: "short" });
-      if (m in baseOrdersCount) {
-        // @ts-ignore
-        baseOrdersCount[m] += 1;
-      } else if (m === "Jul") {
-        baseOrdersCount["Jul"] += 1;
+  const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
+
+  const handleNextStep = () => {
+    setErrorMsg(null);
+    setClientErrors({});
+    if (currentStep === 1) {
+      const validation = clientSchema.safeParse({
+        name: clientData.clientName,
+        businessName: clientData.businessName,
+        mobileNumber: clientData.mobileNumber,
+        email: clientData.email,
+        address: clientData.address,
+      });
+
+      if (!validation.success) {
+        const fieldErrors = validation.error.flatten().fieldErrors;
+        const errMap: Record<string, string> = {};
+        if (fieldErrors.name?.[0]) errMap.clientName = fieldErrors.name[0];
+        if (fieldErrors.mobileNumber?.[0]) errMap.mobileNumber = fieldErrors.mobileNumber[0];
+        if (fieldErrors.email?.[0]) errMap.email = fieldErrors.email[0];
+        setClientErrors(errMap);
+        setErrorMsg('Please fix the validation errors in client information.');
+        return;
       }
-    });
 
-    const ordersChart = Object.entries(baseOrdersCount).map(([name, count]) => ({
-      name,
-      Orders: count,
-    }));
+      // Save / Update client in Customers Store & DB for immediate accessibility in Customers tab
+      try {
+        const { customers, addCustomer, updateCustomer } = useProductionStore.getState();
+        const existing = customers.find(
+          (c) => c.phone === clientData.mobileNumber || (c.email && clientData.email && c.email === clientData.email)
+        );
+        if (existing) {
+          updateCustomer(existing.id, {
+            name: clientData.clientName,
+            company: clientData.businessName,
+            phone: clientData.mobileNumber,
+            email: clientData.email,
+            address: clientData.address,
+          });
+        } else {
+          addCustomer({
+            name: clientData.clientName,
+            company: clientData.businessName,
+            phone: clientData.mobileNumber,
+            email: clientData.email || `${clientData.clientName.toLowerCase().replace(/\s+/g, '')}@client.com`,
+            address: clientData.address,
+            notes: `Added from Bulk Order Step 1 (${new Date().toLocaleDateString()})`,
+            measurements: {},
+            totalOrders: 1,
+            totalSpent: 0,
+          });
+        }
 
-    // 3. Production Status count
-    const statusCounts: Record<string, number> = {
-      "Received": 0,
-      "Cutting": 0,
-      "Stitching": 0,
-      "Embroidery": 0,
-      "QC": 0,
-      "Ready": 0,
-    };
-
-    orders.forEach((o) => {
-      if (o.status === "Material Received") statusCounts["Received"] += 1;
-      else if (o.status in statusCounts) {
-        statusCounts[o.status] += 1;
+        fetch('/api/clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: clientData.clientName,
+            businessName: clientData.businessName,
+            mobileNumber: clientData.mobileNumber,
+            email: clientData.email,
+            address: clientData.address,
+          }),
+        }).catch((err) => console.error('Error syncing client to DB:', err));
+      } catch (err) {
+        console.error('Error saving customer profile:', err);
       }
+    } else if (currentStep === 2) {
+      if (orderData.items.length === 0 || !orderData.items[0].itemDescription) {
+        setErrorMsg('Please add at least one garment item to the order.');
+        return;
+      }
+    }
+    setCurrentStep((prev) => prev + 1);
+  };
+
+  const handlePrevStep = () => {
+    setErrorMsg(null);
+    setCurrentStep((prev) => Math.max(1, prev - 1));
+  };
+
+  const handleSubmitBulkOrder = async () => {
+    try {
+      setErrorMsg(null);
+      if (!agreementData.termsAccepted) {
+        setErrorMsg('You must accept the terms & conditions to proceed.');
+        return;
+      }
+      if (!agreementData.clientSignature) {
+        setErrorMsg('Please provide the Client Digital Signature.');
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      const payload = {
+        clientName: clientData.clientName,
+        businessName: clientData.businessName,
+        mobileNumber: clientData.mobileNumber,
+        email: clientData.email,
+        address: clientData.address,
+
+        items: orderData.items,
+        shippingCharges: orderData.shippingCharges,
+        packingCharges: orderData.packingCharges,
+        materialCharges: orderData.materialCharges,
+        materialProvidedBy: orderData.materialProvidedBy,
+        gstEnabled: orderData.gstEnabled,
+        gstPercentage: orderData.gstPercentage,
+        advanceType: orderData.advanceType,
+        advancePercentage: orderData.advancePercentage,
+        advanceCustomAmount: orderData.advanceCustomAmount,
+        discountType: orderData.discountType,
+        discountPercentage: orderData.discountPercentage,
+        discountAmount: orderData.discountAmount,
+        estimatedDelivery: orderData.estimatedDelivery,
+        deliverySchedule: orderData.deliverySchedule,
+        fabricProcurement: orderData.fabricProcurement,
+        packingBrandingNotes: orderData.packingBrandingNotes,
+        materialReceivedDetails: orderData.materialReceivedDetails,
+
+        referenceImages: orderData.referenceImages,
+        materialImages: orderData.materialImages,
+
+        clientSignatoryName: agreementData.clientSignatoryName || clientData.clientName,
+        clientDesignation: agreementData.clientDesignation,
+        clientSignature: agreementData.clientSignature,
+        witnessName: agreementData.witnessName,
+        witnessMobile: agreementData.witnessMobile,
+        witnessSignature: agreementData.witnessSignature,
+        clientInitials: agreementData.clientInitials,
+        labelInitials: agreementData.labelInitials,
+      };
+
+      const res = await fetch('/api/bulk-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to process order.');
+      }
+
+      setCompletedOrderResult(result);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('garment_bulk_order_draft');
+      }
+      fetchOrders();
+    } catch (e: any) {
+      setErrorMsg(e.message || 'An unexpected error occurred.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setCompletedOrderResult(null);
+    setCurrentStep(1);
+    setClientData({
+      clientName: '',
+      businessName: '',
+      mobileNumber: '',
+      email: '',
+      address: '',
     });
-
-    const COLORS = ["#64748b", "#71717a", "#3b82f6", "#a855f7", "#f59e0b", "#6366f1"];
-    const productionChart = Object.entries(statusCounts).map(([name, value], index) => ({
-      name,
-      value,
-      color: COLORS[index % COLORS.length],
-    })).filter(item => item.value > 0);
-
-    return {
-      revenueChart,
-      ordersChart,
-      productionChart,
-    };
-  }, [orders, payments]);
-
-  // Format currencies
-  const formatCurrency = (val: number) => {
-    return `${settings.currencySymbol}${val.toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    })}`;
+    setAgreementData({
+      clientSignatoryName: '',
+      clientDesignation: 'Proprietor',
+      clientSignature: '',
+      witnessName: '',
+      witnessMobile: '',
+      witnessSignature: '',
+      clientInitials: 'RS',
+      labelInitials: 'RL',
+      ipAccepted: true,
+      termsAccepted: true,
+    });
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('garment_bulk_order_draft');
+    }
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Header Row */}
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+    <div className="w-full space-y-3 sm:space-y-6 pb-8 px-0 sm:px-4 md:px-6">
+      {/* Compact Sub-Navigation Tabs */}
+      <div className="grid grid-cols-3 gap-1 p-1 bg-zinc-200/60 dark:bg-zinc-800/80 rounded-lg border border-zinc-300/50 dark:border-zinc-700 text-center">
+        <button
+          onClick={() => setActiveTab('bulk')}
+          className={`py-1.5 px-1 rounded-md text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition ${
+            activeTab === 'bulk'
+              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Bulk Order</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('boutique')}
+          className={`py-1.5 px-1 rounded-md text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition ${
+            activeTab === 'boutique'
+              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+          }`}
+        >
+          <Scissors className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Boutique</span>
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('orders');
+            fetchOrders();
+          }}
+          className={`py-1.5 px-1 rounded-md text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition ${
+            activeTab === 'orders'
+              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+          }`}
+        >
+          <HardDrive className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Storage ({savedOrders.length})</span>
+        </button>
+      </div>
+
+      {/* BOUTIQUE SECTION */}
+      {activeTab === 'boutique' && <BoutiqueSection />}
+
+      {/* BULK MANUFACTURING SECTION */}
+      {activeTab === 'bulk' && (
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 font-sans">
-            Atelier Production System
-          </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            Real-time shop floor and financial health status.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/orders/new">
-            <Button className="font-semibold tracking-tight shadow-sm cursor-pointer">
-              Create New Order
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* Metric Cards Row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <MetricCard
-          title="Total Orders"
-          value={metrics.totalOrders}
-          change={12}
-          icon={<ShoppingBag className="h-4 w-4" />}
-        />
-        <MetricCard
-          title="Pending Orders"
-          value={metrics.pendingOrders}
-          change={-5}
-          icon={<Clock className="h-4 w-4" />}
-        />
-        <MetricCard
-          title="In Production"
-          value={metrics.inProduction}
-          change={8}
-          icon={<Wrench className="h-4 w-4" />}
-        />
-        <MetricCard
-          title="Delivered"
-          value={metrics.delivered}
-          change={20}
-          icon={<CheckCircle className="h-4 w-4" />}
-        />
-        <MetricCard
-          title="Revenue"
-          value={formatCurrency(metrics.totalRevenue)}
-          change={15}
-          icon={<DollarSign className="h-4 w-4" />}
-        />
-        <MetricCard
-          title="Unpaid Balance"
-          value={formatCurrency(metrics.pendingPayments)}
-          change={-2}
-          icon={<AlertTriangle className="h-4 w-4" />}
-        />
-      </div>
-
-      {/* Market Garment Production System Execution Banner */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-5 rounded-xl bg-gradient-to-r from-emerald-950 via-zinc-900 to-zinc-900 text-white border border-emerald-800/40 shadow-md flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-              Shop Floor Execution (MES)
-            </span>
-            <h3 className="text-lg font-bold text-zinc-100">Live Sewing Line Monitor & Bundle Control</h3>
-            <p className="text-xs text-zinc-400">Track 3 sewing lines, operator SAM targets & bundle tickets.</p>
-          </div>
-          <Link href="/shop-floor">
-            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold whitespace-nowrap">
-              Shop Floor MES <ArrowRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
-          </Link>
-        </div>
-
-        <div className="p-5 rounded-xl bg-gradient-to-r from-blue-950 via-zinc-900 to-zinc-900 text-white border border-blue-800/40 shadow-md flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">
-              Apparel Inventory & BOM
-            </span>
-            <h3 className="text-lg font-bold text-zinc-100">Fabric Stock Ledger & Lay Plan Estimator</h3>
-            <p className="text-xs text-zinc-400">Calculate fabric roll meters & trim stock thresholds.</p>
-          </div>
-          <Link href="/inventory">
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold whitespace-nowrap">
-              Inventory Ledger <ArrowRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Revenue Trend Area Chart */}
-        <div className="lg:col-span-2">
-          <ChartCard title="Revenue Trend" description="Combined monthly deposit & balance payments">
-            {isMounted ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartsData.revenueChart} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="revenueColor" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#18181b" stopOpacity={0.1} />
-                      <stop offset="95%" stopColor="#18181b" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="name" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis
-                    stroke="#888888"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(val) => `${settings.currencySymbol}${val / 1000}k`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--card)",
-                      borderColor: "var(--border)",
-                      borderRadius: "6px",
-                      color: "var(--foreground)",
-                      fontSize: "12px",
-                    }}
-                    formatter={(val) => [`${settings.currencySymbol}${Number(val).toLocaleString()}`, "Revenue"]}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="Revenue"
-                    stroke="#18181b"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#revenueColor)"
-                    className="dark:stroke-zinc-150"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full w-full bg-zinc-50 dark:bg-zinc-800 animate-pulse rounded-md" />
-            )}
-          </ChartCard>
-        </div>
-
-        {/* Production Status Pie Chart */}
-        <div>
-          <ChartCard title="Orders in Production" description="Active workshop stages distribution">
-            {isMounted ? (
-              chartsData.productionChart.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-xs text-zinc-400">
-                  No orders in cutting/stitching/QC
-                </div>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center">
-                  <div className="h-44 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={chartsData.productionChart}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={55}
-                          outerRadius={75}
-                          paddingAngle={3}
-                          dataKey="value"
-                        >
-                          {chartsData.productionChart.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "var(--card)",
-                            borderColor: "var(--border)",
-                            borderRadius: "6px",
-                            fontSize: "11px",
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
+          {completedOrderResult ? (
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 text-center space-y-4 max-w-xl mx-auto">
+              <div className="w-12 h-12 bg-emerald-600 text-white rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-7 h-7" />
+              </div>
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                Order & Manufacturing Agreement Created!
+              </h2>
+              <p className="text-xs text-zinc-500">
+                Order #{completedOrderResult.order?.orderNumber} has been processed successfully. Order and invoice history are available in the Customers and Invoices sections.
+              </p>
+              <div className="flex justify-center gap-3 pt-2">
+                <button
+                  onClick={() => (window.location.href = '/orders')}
+                  className="px-4 py-2 bg-zinc-900 text-white text-xs font-semibold rounded-md hover:bg-zinc-800 transition cursor-pointer"
+                >
+                  View Orders
+                </button>
+                <button
+                  onClick={resetForm}
+                  className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-md hover:bg-indigo-700 transition cursor-pointer"
+                >
+                  Create Another Order
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3 sm:space-y-6">
+              {/* Compact Stepper Progress Bar */}
+              <div className="bg-white dark:bg-zinc-900 p-2.5 sm:p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center justify-between gap-3">
+                <div className="flex justify-between items-center max-w-2xl flex-1 mx-auto">
+                  <div className={`flex items-center gap-1.5 ${currentStep >= 1 ? 'text-zinc-900 dark:text-zinc-100 font-bold' : 'text-zinc-400'}`}>
+                    <div className={`w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs ${currentStep >= 1 ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
+                      1
+                    </div>
+                    <span className="text-[11px] sm:text-xs">Client</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mt-4 w-full">
-                    {chartsData.productionChart.map((item) => (
-                      <div key={item.name} className="flex flex-col items-center justify-center text-center">
-                        <span className="flex items-center text-[10px] font-medium text-zinc-555">
-                          <span
-                            className="inline-block h-2 w-2 rounded-full mr-1"
-                            style={{ backgroundColor: item.color }}
-                          />
-                          {item.name}
-                        </span>
-                        <span className="text-xs font-bold mt-0.5">{item.value}</span>
-                      </div>
-                    ))}
+                  <div className={`h-0.5 flex-1 mx-1.5 sm:mx-3 ${currentStep >= 2 ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-800'}`} />
+                  <div className={`flex items-center gap-1.5 ${currentStep >= 2 ? 'text-zinc-900 dark:text-zinc-100 font-bold' : 'text-zinc-400'}`}>
+                    <div className={`w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs ${currentStep >= 2 ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
+                      2
+                    </div>
+                    <span className="text-[11px] sm:text-xs">Specs</span>
+                  </div>
+                  <div className={`h-0.5 flex-1 mx-1.5 sm:mx-3 ${currentStep >= 3 ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-800'}`} />
+                  <div className={`flex items-center gap-1.5 ${currentStep >= 3 ? 'text-zinc-900 dark:text-zinc-100 font-bold' : 'text-zinc-400'}`}>
+                    <div className={`w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs ${currentStep >= 3 ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
+                      3
+                    </div>
+                    <span className="text-[11px] sm:text-xs">Agreement</span>
                   </div>
                 </div>
-              )
-            ) : (
-              <div className="h-full w-full bg-zinc-50 dark:bg-zinc-800 animate-pulse rounded-md" />
-            )}
-          </ChartCard>
-        </div>
-      </div>
 
-      {/* Dashboard Widgets Rows */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Orders List Widget */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-bold tracking-tight">Recent Orders</CardTitle>
-                <p className="text-xs text-zinc-400 mt-1">Recently created custom garment jobs.</p>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-800 transition shrink-0 cursor-pointer"
+                  title="Reset form fields & clear draft"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Reset Form</span>
+                </button>
               </div>
-              <Link href="/orders">
-                <Button variant="ghost" size="sm" className="text-xs font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                  View All <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {recentOrders.map((order) => (
-                  <div key={order.id} className="p-4 flex items-center justify-between hover:bg-zinc-50/50 dark:hover:bg-zinc-800/10 transition-colors">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-9 w-9 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-xs text-zinc-600 dark:text-zinc-350">
-                        {order.orderNumber.replace("ORD-", "")}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                          {order.customerName}
-                        </p>
-                        <p className="text-xs text-zinc-400 mt-0.5">
-                          {order.products.map((p) => `${p.quantity}x ${p.product}`).join(", ")}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-zinc-950 dark:text-zinc-100">
-                          {formatCurrency(order.estimate.total)}
-                        </p>
-                        <p className="text-[10px] text-zinc-400 mt-0.5">
-                          {new Date(order.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <StatusBadge status={order.status} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Side panels: Upcoming Deliveries & Production activities */}
-        <div className="space-y-6">
-          {/* Upcoming Deliveries Widget */}
-          <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-            <CardHeader>
-              <CardTitle className="text-sm font-bold tracking-tight flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4 text-zinc-400" />
-                <span>Upcoming Deliveries</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {upcomingDeliveries.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-zinc-450 italic">No upcoming deliveries.</div>
+              {/* Error Banner */}
+              {errorMsg && (
+                <div className="p-4 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 text-xs rounded-xl font-medium">
+                  {errorMsg}
+                </div>
+              )}
+
+              {/* Form Step 1: Client Details */}
+              {currentStep === 1 && (
+                <ClientForm data={clientData} onChange={(u) => setClientData((prev) => ({ ...prev, ...u }))} errors={clientErrors} />
+              )}
+
+              {/* Form Step 2: Order Specifications */}
+              {currentStep === 2 && (
+                <BulkOrderForm data={orderData} onChange={(u) => setOrderData((prev) => ({ ...prev, ...u }))} />
+              )}
+
+              {/* Form Step 3: Agreement & Signatures */}
+              {currentStep === 3 && (
+                <AgreementSignatureSection
+                  data={agreementData}
+                  clientNameDefault={clientData.clientName}
+                  clientData={clientData}
+                  orderData={orderData}
+                  onChange={(u) => setAgreementData((prev) => ({ ...prev, ...u }))}
+                />
+              )}
+
+              {/* Compact Navigation Action Buttons */}
+              <div className="flex justify-between items-center gap-2 pt-2">
+                {currentStep > 1 ? (
+                  <button
+                    type="button"
+                    onClick={handlePrevStep}
+                    className="flex-1 sm:flex-initial px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 text-zinc-900 dark:text-zinc-100 font-semibold text-xs rounded-md transition text-center"
+                  >
+                    ← Back
+                  </button>
                 ) : (
-                  upcomingDeliveries.map((order) => {
-                    const daysLeft = Math.ceil(
-                      (new Date(order.deliveryDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24)
-                    );
-                    const isUrgent = daysLeft <= 3;
-                    return (
-                      <div key={order.id} className="p-4 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-zinc-900 dark:text-zinc-50">{order.customerName}</p>
-                          <p className="text-[10px] text-zinc-400 truncate w-36 mt-0.5">
-                            {order.products.map((p) => p.product).join(", ")}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs font-semibold">{order.deliveryDate}</p>
-                          <span
-                            className={cn(
-                              "inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded mt-0.5",
-                              isUrgent
-                                ? "bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400"
-                                : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                            )}
-                          >
-                            {daysLeft < 0 ? "Overdue" : daysLeft === 0 ? "Today" : `${daysLeft} days left`}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })
+                  <div />
+                )}
+
+                {currentStep < 3 ? (
+                  <button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="flex-1 sm:flex-initial px-5 py-2 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 font-semibold text-xs rounded-md transition shadow-sm text-center"
+                  >
+                    Continue to Next Step →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={handleSubmitBulkOrder}
+                    className="flex-1 sm:flex-initial px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-md transition shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Submit Bulk Order
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent activities widget */}
-          <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-            <CardHeader>
-              <CardTitle className="text-sm font-bold tracking-tight flex items-center gap-2">
-                <Activity className="h-4 w-4 text-zinc-400" />
-                <span>Production Logs</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 pt-0">
-              <div className="flow-root">
-                <ul className="-mb-8">
-                  {activities.slice(0, 4).map((activity, actIdx) => (
-                    <li key={activity.id}>
-                      <div className="relative pb-8">
-                        {actIdx !== activities.slice(0, 4).length - 1 ? (
-                          <span
-                            className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-zinc-200 dark:bg-zinc-800"
-                            aria-hidden="true"
-                          />
-                        ) : null}
-                        <div className="relative flex space-x-3">
-                          <div>
-                            <span className="h-8 w-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
-                              <User className="h-4 w-4 text-zinc-555" />
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0 pt-1.5">
-                            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-normal">
-                              <span className="font-semibold text-zinc-850 dark:text-zinc-100">
-                                {activity.orderNumber}
-                              </span>{" "}
-                              updated to{" "}
-                              <span className="font-medium text-zinc-800 dark:text-zinc-250">
-                                {activity.status}
-                              </span>
-                            </p>
-                            <p className="text-[9px] text-zinc-450 mt-0.5">
-                              {activity.updatedBy} &bull;{" "}
-                              {new Date(activity.timestamp).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          )}
         </div>
-      </div>
+      )}
+
+      {/* Order Lifecycle Modal */}
+      {selectedOrderForLifecycle && (
+        <OrderLifecycleModal
+          order={selectedOrderForLifecycle}
+          isOpen={!!selectedOrderForLifecycle}
+          onClose={() => setSelectedOrderForLifecycle(null)}
+          onUpdated={() => {
+            fetchOrders();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-gray-500">Loading Garment Production System...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

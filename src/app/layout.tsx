@@ -15,8 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Atelier - Premium Garment Production System",
-  description: "Bespoke production, order, customer and payment management.",
+  title: "RAADHE LABEL - Premium Garment Production System",
+  description: "Bespoke bulk garment production, order management, customer profiles and payments.",
+  icons: {
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 export const viewport: Viewport = {

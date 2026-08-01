@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NumberInput } from "@/components/ui/number-input";
-import { Scissors, Ruler, Sparkles, Check, Info } from "lucide-react";
+import { Scissors, Ruler, Check, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface GarmentSizeSelectorProps {
@@ -170,7 +170,7 @@ export function GarmentSizeSelector({ measurements, onChange }: GarmentSizeSelec
                 mode === "standard" ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : ""
               }`}
             >
-              <Sparkles className="h-3.5 w-3.5 mr-1 text-amber-400 shrink-0" /> Standard Size
+              Standard Size
             </Button>
           </div>
         </div>

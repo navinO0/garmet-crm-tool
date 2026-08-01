@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import { useProductionStore } from "@/store/productionStore";
 import { StatusBadge, EmptyState } from "@/components/shared/ReusableComponents";
 import { Payment, Order } from "@/types";
+import { paymentSchema } from "@/lib/validations/schemas";
 import { cn } from "@/lib/utils";
 import {
   Search,
@@ -110,16 +111,22 @@ export default function PaymentsPage() {
     e.preventDefault();
     setFormError("");
 
-    if (!selectedOrderId) {
-      setFormError("Please select an order.");
+    const validation = paymentSchema.safeParse({
+      orderId: selectedOrderId,
+      amount,
+      method,
+      date: new Date().toISOString().split("T")[0],
+      notes,
+    });
+
+    if (!validation.success) {
+      const err = validation.error.flatten().fieldErrors;
+      const firstErr = err.orderId?.[0] || err.amount?.[0] || err.method?.[0] || "Invalid payment details";
+      setFormError(firstErr);
       return;
     }
 
-    const amt = parseFloat(amount);
-    if (isNaN(amt) || amt <= 0) {
-      setFormError("Amount must be a positive number.");
-      return;
-    }
+    const amt = validation.data.amount;
 
     if (selectedOrderObj && amt > selectedOrderObj.balance + 0.01) {
       setFormError(`Amount cannot exceed the remaining balance of ${settings.currencySymbol}${selectedOrderObj.balance.toFixed(2)}.`);

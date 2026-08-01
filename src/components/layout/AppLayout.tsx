@@ -26,6 +26,8 @@ import {
   Radio,
   TrendingUp,
   Briefcase,
+  Layers,
+  HardDrive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -37,10 +39,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { getNavVisibility, DEFAULT_NAV_VISIBILITY } from "@/config/navVisibility";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Bulk Manufacturing", href: "/?tab=bulk", icon: Layers },
+  { name: "Boutique Section", href: "/?tab=boutique", icon: Scissors },
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Orders", href: "/orders", icon: ShoppingBag },
-  { name: "Production", href: "/production", icon: Scissors },
   { name: "Shop Floor (MES)", href: "/shop-floor", icon: Radio },
   { name: "Inventory & BOM", href: "/inventory", icon: Package },
   { name: "Payments", href: "/payments", icon: CreditCard },
@@ -185,23 +187,35 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
-    <nav className="flex-1 space-y-1 px-2 py-4">
-      {filteredNavigation.map((item) => {
-        const isActive = pathname === item.href;
-        return (
-          <Link
-            key={item.name}
-            href={item.href}
-            onClick={() => mobile && setSidebarOpen(false)}
-            className={cn(
-              isActive
-                ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
-                : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50",
-              "group flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200",
-              isCollapsed && !mobile ? "justify-center" : ""
-            )}
-          >
+  const NavLinks = ({ mobile = false }: { mobile?: boolean }) => {
+    let currentTab = "bulk";
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      currentTab = urlParams.get("tab") || "bulk";
+    }
+
+    return (
+      <nav className="flex-1 space-y-1 px-2 py-4">
+        {filteredNavigation.map((item) => {
+          let isActive = pathname === item.href;
+          if (item.href.includes("tab=")) {
+            const itemTab = item.href.split("tab=")[1];
+            isActive = pathname === "/" && currentTab === itemTab;
+          }
+
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              onClick={() => mobile && setSidebarOpen(false)}
+              className={cn(
+                isActive
+                  ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50 font-semibold"
+                  : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50",
+                "group flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                isCollapsed && !mobile ? "justify-center" : ""
+              )}
+            >
             <item.icon
               className={cn(
                 isActive
@@ -218,6 +232,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       })}
     </nav>
   );
+};
 
   return (
     <div className="flex h-screen overflow-hidden bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 font-sans transition-colors duration-300">
@@ -304,15 +319,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex h-16 items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
+        <header className="flex h-12 sm:h-16 items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 sm:px-6 lg:px-8 transition-colors duration-300">
           <div className="flex items-center flex-1">
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden mr-4 border border-zinc-200 dark:border-zinc-800"
+              className="lg:hidden mr-2 h-8 w-8 border border-zinc-200 dark:border-zinc-800"
               onClick={() => setSidebarOpen(true)}
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-4 w-4" />
             </Button>
             
             {/* Global Search trigger bar */}
@@ -332,28 +347,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="sm:hidden border border-zinc-200 dark:border-zinc-800"
+              className="sm:hidden h-8 w-8 border border-zinc-200 dark:border-zinc-800"
               onClick={() => setSearchOpen(true)}
             >
-              <Search className="h-5 w-5" />
+              <Search className="h-4 w-4" />
             </Button>
           </div>
 
-          <div className="flex items-center space-x-3 sm:space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             {/* Notification Trigger Button */}
             <Button 
               variant="ghost" 
               size="icon" 
-              className="relative border border-zinc-200 dark:border-zinc-800"
+              className="relative h-8 w-8 border border-zinc-200 dark:border-zinc-800"
               onClick={() => setNotificationsOpen(true)}
             >
-              <Bell className="h-5 w-5" />
+              <Bell className="h-4 w-4" />
               {notifications.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-zinc-900"></span>
+                <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-zinc-900"></span>
               )}
             </Button>
 
-            <Avatar className="h-9 w-9 border border-zinc-200 dark:border-zinc-850">
+            <Avatar className="h-7 w-7 sm:h-9 sm:w-9 border border-zinc-200 dark:border-zinc-850">
               <AvatarImage src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256" alt="Avatar" />
               <AvatarFallback>AD</AvatarFallback>
             </Avatar>
@@ -361,7 +376,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-zinc-950 p-4 sm:p-6 lg:p-8 transition-colors duration-300">
+        <main className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-zinc-950 px-0 py-4 sm:p-6 lg:p-8 transition-colors duration-300">
           {children}
         </main>
       </div>

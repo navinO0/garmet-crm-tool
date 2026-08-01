@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ interface NumberInputProps extends Omit<React.InputHTMLAttributes<HTMLInputEleme
   min?: number;
   max?: number;
   className?: string;
+  placeholder?: string;
 }
 
 export function NumberInput({
@@ -23,24 +24,23 @@ export function NumberInput({
   placeholder,
   ...props
 }: NumberInputProps) {
-  // Store internal string value to allow backspacing to empty string freely
-  const [displayValue, setDisplayValue] = useState<string>(
-    value === undefined || value === null ? "" : String(value)
-  );
+  const [displayValue, setDisplayValue] = useState<string>(() => {
+    if (value === undefined || value === null || value === "") return "";
+    return String(value);
+  });
+
+  const isFocusedRef = useRef(false);
 
   useEffect(() => {
-    // Sync external prop changes (e.g. standard size auto-fills) into display string
+    // While the user is focused/typing inside the input, do NOT overwrite their display string
+    if (isFocusedRef.current) return;
+
     if (value === undefined || value === null || value === "") {
-      if (displayValue !== "") {
-        const parsedCurrent = parseFloat(displayValue);
-        if (parsedCurrent === 0) {
-          setDisplayValue("");
-        }
-      }
+      setDisplayValue("");
     } else {
-      const parsedProp = typeof value === "number" ? value : parseFloat(String(value));
-      const parsedCurrent = parseFloat(displayValue);
-      if (displayValue === "" || isNaN(parsedCurrent) || parsedCurrent !== parsedProp) {
+      const num = typeof value === "number" ? value : parseFloat(String(value));
+      const currentNum = parseFloat(displayValue);
+      if (displayValue === "" || isNaN(currentNum) || currentNum !== num) {
         setDisplayValue(String(value));
       }
     }
@@ -49,14 +49,14 @@ export function NumberInput({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
 
-    // Allow empty string so user can clear the input completely
-    if (raw === "") {
-      setDisplayValue("");
+    // Allow empty string or single minus so user can clear input / remove last digit freely
+    if (raw === "" || raw === "-") {
+      setDisplayValue(raw);
       onChange(0);
       return;
     }
 
-    // Filter pattern: allow digits and at most one decimal point if enabled
+    // Filter pattern: allow digits and optional decimal point
     const regex = allowDecimals ? /^-?\d*\.?\d*$/ : /^-?\d*$/;
 
     if (regex.test(raw)) {
@@ -68,18 +68,27 @@ export function NumberInput({
     }
   };
 
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    isFocusedRef.current = true;
+    if (props.onFocus) props.onFocus(e);
+  };
+
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    isFocusedRef.current = false;
     if (displayValue === "" || isNaN(parseFloat(displayValue))) {
-      if (min !== undefined) {
+      if (min !== undefined && min > 0) {
         setDisplayValue(String(min));
         onChange(min);
       }
-    } else if (min !== undefined && parseFloat(displayValue) < min) {
-      setDisplayValue(String(min));
-      onChange(min);
-    } else if (max !== undefined && parseFloat(displayValue) > max) {
-      setDisplayValue(String(max));
-      onChange(max);
+    } else {
+      const parsed = parseFloat(displayValue);
+      if (min !== undefined && parsed < min) {
+        setDisplayValue(String(min));
+        onChange(min);
+      } else if (max !== undefined && parsed > max) {
+        setDisplayValue(String(max));
+        onChange(max);
+      }
     }
     if (props.onBlur) props.onBlur(e);
   };
@@ -88,11 +97,16 @@ export function NumberInput({
     <Input
       type="text"
       inputMode={allowDecimals ? "decimal" : "numeric"}
+      pattern="[0-9]*"
       value={displayValue}
       onChange={handleChange}
+      onFocus={handleFocus}
       onBlur={handleBlur}
       placeholder={placeholder}
-      className={cn(className)}
+      className={cn(
+        "text-base md:text-sm placeholder:text-sm placeholder:text-zinc-400 dark:placeholder:text-zinc-500",
+        className
+      )}
       {...props}
     />
   );

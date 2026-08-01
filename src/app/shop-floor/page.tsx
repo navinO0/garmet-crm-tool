@@ -16,7 +16,6 @@ import {
   Users,
   Clock,
   CheckSquare,
-  Sparkles,
   ArrowRight,
   ShieldAlert,
 } from "lucide-react";
@@ -26,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { NumberInput } from "@/components/ui/number-input";
-import { BundleTicketModal } from "@/components/production/BundleTicketModal";
+import { BundleTicketModal } from "@/components/orders/BundleTicketModal";
 
 const STATIONS: OrderStatus[] = [
   "Material Received",

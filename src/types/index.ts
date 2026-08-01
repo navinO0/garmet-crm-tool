@@ -266,6 +266,9 @@ export interface CompanySettings {
   contactPerson?: string;
   supportEmail?: string;
   logoUrl?: string;
+  companySignature?: string;
+  companySignatoryName?: string;
+  companyDesignation?: string;
   invoicePrefix: string;
   gstRate: number; // percentage, e.g. 18
   currencySymbol: string;

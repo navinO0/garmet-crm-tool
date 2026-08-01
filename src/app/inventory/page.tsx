@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { useProductionStore } from "@/store/productionStore";
 import { InventoryItem } from "@/types";
+import { inventoryItemSchema } from "@/lib/validations/schemas";
 import {
   Package,
   Plus,
@@ -84,13 +85,31 @@ export default function InventoryPage() {
     return inventory.reduce((sum, item) => sum + item.stockQuantity * item.costPerUnit, 0);
   }, [inventory]);
 
+  const [itemErrors, setItemErrors] = useState<Record<string, string>>({});
+
   const handleAddItemSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newItem.name || !newItem.sku) return;
-
-    addInventoryItem({
+    setItemErrors({});
+    const validation = inventoryItemSchema.safeParse({
       ...newItem,
       sku: newItem.sku || `SKU-${Date.now().toString().slice(-4)}`,
+    });
+
+    if (!validation.success) {
+      const errs: Record<string, string> = {};
+      const fields = validation.error.flatten().fieldErrors;
+      if (fields.name?.[0]) errs.name = fields.name[0];
+      if (fields.sku?.[0]) errs.sku = fields.sku[0];
+      if (fields.supplier?.[0]) errs.supplier = fields.supplier[0];
+      if (fields.stockQuantity?.[0]) errs.stockQuantity = fields.stockQuantity[0];
+      if (fields.costPerUnit?.[0]) errs.costPerUnit = fields.costPerUnit[0];
+      setItemErrors(errs);
+      return;
+    }
+
+    addInventoryItem({
+      ...validation.data,
+      color: newItem.color,
     });
 
     setIsAddOpen(false);

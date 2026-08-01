@@ -7,7 +7,7 @@ import { useProductionStore } from "@/store/productionStore";
 import { StatusBadge, MeasurementCard, EmptyState } from "@/components/shared/ReusableComponents";
 import { Order, OrderStatus, Payment } from "@/types";
 import { cn } from "@/lib/utils";
-import { BundleTicketModal } from "@/components/production/BundleTicketModal";
+import { BundleTicketModal } from "@/components/orders/BundleTicketModal";
 import {
   Search,
   Plus,
@@ -669,8 +669,9 @@ function OrdersContent() {
                               <Label htmlFor="paymentAmount" className="text-[10px] font-bold uppercase tracking-wider text-zinc-450">Amount ({settings.currencySymbol})</Label>
                               <Input
                                 id="paymentAmount"
-                                type="number"
-                                step="0.01"
+                                type="text"
+                                inputMode="decimal"
+                                pattern="[0-9]*"
                                 placeholder={balance.toFixed(2)}
                                 value={paymentAmount}
                                 onChange={(e) => setPaymentAmount(e.target.value)}

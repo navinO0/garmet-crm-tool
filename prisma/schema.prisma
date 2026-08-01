@@ -1,0 +1,166 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Client {
+  id           String      @id @default(uuid())
+  name         String
+  businessName String?
+  mobileNumber String
+  email        String?
+  address      String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  bulkOrders   BulkOrder[]
+}
+
+model BulkOrder {
+  id                      String          @id @default(uuid())
+  orderNumber             String          @unique
+  clientId                String
+  client                  Client          @relation(fields: [clientId], references: [id])
+  status                  String          @default("Estimate Generated")
+  totalAmount             Float           @default(0.0)
+  subtotalAmount          Float           @default(0.0)
+  advancePayment          Float           @default(0.0)
+  remainingAmount         Float           @default(0.0)
+  shippingCharges         Float           @default(0.0)
+  packingCharges          Float           @default(0.0)
+  materialCharges         Float           @default(0.0)
+  materialProvidedBy      String          @default("Client")
+  gstEnabled              Boolean         @default(false)
+  gstPercentage           Float           @default(0.0)
+  gstAmount               Float           @default(0.0)
+  estimatedDelivery       String?
+  extendedDeliveryDate    String?
+  extensionReason         String?
+  deliverySchedule        String?
+  fabricProcurement       String?
+  packingBrandingNotes    String?
+  materialReceivedDetails String?
+  leftoverMaterialNotes   String?
+  referenceImages         String?
+  materialImages          String?
+  outputImages            String?
+  clientInitials          String?
+  labelInitials           String?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  items                   BulkOrderItem[]
+  agreement               Agreement?
+  invoice                 Invoice?
+}
+
+model BulkOrderItem {
+  id               String    @id @default(uuid())
+  orderId          String
+  order            BulkOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  itemDescription  String
+  category         String?
+  outfitStyleId    String?
+  quantity         Int
+  unitRate         Float
+  totalPrice       Float
+  fabricDetails    String?
+  sizeBreakdown    String?
+  priceBreakupJson String?
+  createdAt        DateTime  @default(now())
+}
+
+model Agreement {
+  id                    String    @id @default(uuid())
+  orderId               String    @unique
+  order                 BulkOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  clientSignatoryName   String
+  clientDesignation     String?
+  clientSignature       String?
+  clientSignedDate      String?
+  companySignatoryName  String    @default("RAADHE LABEL by RADHE VASTRAZ")
+  companyDesignation    String?   @default("Authorized Signatory")
+  companySignature      String?
+  companySignedDate     String?
+  witnessName           String?
+  witnessMobile         String?
+  witnessSignature      String?
+  witnessDate           String?
+  ipClauseAccepted      Boolean   @default(true)
+  termsAccepted         Boolean   @default(true)
+  agreementPdfBucketUrl String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Invoice {
+  id                  String    @id @default(uuid())
+  invoiceNumber       String    @unique
+  orderId             String    @unique
+  order               BulkOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  invoiceDate         DateTime  @default(now())
+  dueDate             DateTime?
+  subtotal            Float
+  shippingCharges     Float     @default(0)
+  packingCharges      Float     @default(0)
+  materialCharges     Float     @default(0)
+  gstAmount           Float     @default(0)
+  totalAmount         Float
+  advancePaid         Float
+  balanceDue          Float
+  paymentStatus       String    @default("Partial")
+  invoicePdfBucketUrl String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model BoutiqueOrder {
+  id           String   @id @default(uuid())
+  orderNumber  String   @unique
+  customerName String
+  phone        String
+  garmentType  String
+  status       String   @default("Pending")
+  totalAmount  Float
+  advancePaid  Float
+  detailsJson  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model OutfitStyle {
+  id                    String   @id @default(uuid())
+  name                  String   @unique
+  category              String   @default("Ethnic Wear")
+  baseStitchingCost     Float    @default(500)
+  materialRequiredSpecs String?
+  materialsJson         String?  // JSON array of itemized material requirements per piece
+  description           String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model CustomSize {
+  id               String   @id @default(uuid())
+  name             String
+  code             String   @unique
+  measurementsJson String?  // JSON object of measurement specs (e.g. { Bust: "36 in", Waist: "30 in" })
+  isEnabled        Boolean  @default(true)
+  createdAt        DateTime @default(now())
+}
+
+model CustomMeasurement {
+  id       String   @id @default(uuid())
+  name     String
+  category String   @default("General")
+  unit     String   @default("inches")
+}
+
+model SystemSetting {
+  id            String   @id @default("default")
+  gstEnabled    Boolean  @default(false)
+  gstPercentage Float    @default(5.0)
+  updatedAt     DateTime @updatedAt
+}
