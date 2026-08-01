@@ -71,6 +71,9 @@ export interface Customer {
   phone: string;
   company?: string;
   address: string;
+  notes?: string;
+  totalOrders?: number;
+  totalSpent?: number;
   measurements: Measurements; // fallback or default set
   sizeSets?: SizeSet[]; // list of alternate size sets
   createdAt: string;
@@ -115,13 +118,16 @@ export interface ProductItem {
 }
 
 export interface OrderEstimate {
-  stitching: number;
-  embroidery: number;
-  printing: number;
-  transport: number;
-  packing: number;
-  discount: number;
-  gst: number;
+  stitching?: number;
+  embroidery?: number;
+  printing?: number;
+  transport?: number;
+  packing?: number;
+  discount?: number;
+  gst?: number;
+  subtotal?: number;
+  shipping?: number;
+  tax?: number;
   total: number;
 }
 

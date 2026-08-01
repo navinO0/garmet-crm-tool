@@ -1404,35 +1404,35 @@ export default function NewOrder() {
                   <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">Live Price Calculation</h3>
                   <div className="flex justify-between">
                     <span className="text-zinc-500">Stitching charges</span>
-                    <span className="font-semibold">{formatCurrency(pricingEstimate.stitching)}</span>
+                    <span className="font-semibold">{formatCurrency(pricingEstimate.stitching || 0)}</span>
                   </div>
-                  {pricingEstimate.embroidery > 0 && (
+                  {(pricingEstimate.embroidery || 0) > 0 && (
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Embroidery labor</span>
-                      <span className="font-semibold">{formatCurrency(pricingEstimate.embroidery)}</span>
+                      <span className="font-semibold">{formatCurrency(pricingEstimate.embroidery || 0)}</span>
                     </div>
                   )}
-                  {pricingEstimate.printing > 0 && (
+                  {(pricingEstimate.printing || 0) > 0 && (
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Printing fee</span>
-                      <span className="font-semibold">{formatCurrency(pricingEstimate.printing)}</span>
+                      <span className="font-semibold">{formatCurrency(pricingEstimate.printing || 0)}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span className="text-zinc-500">Shipping & Packing</span>
                     <span className="font-semibold">
-                      {formatCurrency(pricingEstimate.transport + pricingEstimate.packing)}
+                      {formatCurrency((pricingEstimate.transport || 0) + (pricingEstimate.packing || 0))}
                     </span>
                   </div>
-                  {pricingEstimate.discount > 0 && (
+                  {(pricingEstimate.discount || 0) > 0 && (
                     <div className="flex justify-between text-red-500">
                       <span>Discount</span>
-                      <span className="font-semibold">-{formatCurrency(pricingEstimate.discount)}</span>
+                      <span className="font-semibold">-{formatCurrency(pricingEstimate.discount || 0)}</span>
                     </div>
                   )}
                   <div className="flex justify-between border-t pt-2 border-zinc-200/50 dark:border-zinc-800">
                     <span className="text-zinc-500">GST ({settings.gstRate}%)</span>
-                    <span className="font-semibold">{formatCurrency(pricingEstimate.gst)}</span>
+                    <span className="font-semibold">{formatCurrency(pricingEstimate.gst || 0)}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2 border-zinc-200/80 dark:border-zinc-800 text-sm font-extrabold text-zinc-900 dark:text-zinc-50">
                     <span>Grand Total</span>
@@ -1532,40 +1532,40 @@ export default function NewOrder() {
                   <div className="space-y-2">
                     <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                       <span>Stitching Charges</span>
-                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatCurrency(pricingEstimate.stitching)}</span>
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatCurrency(pricingEstimate.stitching || 0)}</span>
                     </div>
 
-                    {pricingEstimate.embroidery > 0 && (
+                    {(pricingEstimate.embroidery || 0) > 0 && (
                       <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                         <span>Embroidery Labor</span>
-                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatCurrency(pricingEstimate.embroidery)}</span>
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatCurrency(pricingEstimate.embroidery || 0)}</span>
                       </div>
                     )}
 
-                    {pricingEstimate.printing > 0 && (
+                    {(pricingEstimate.printing || 0) > 0 && (
                       <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                         <span>Fabric Printing</span>
-                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatCurrency(pricingEstimate.printing)}</span>
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatCurrency(pricingEstimate.printing || 0)}</span>
                       </div>
                     )}
 
                     <div className="flex justify-between text-zinc-600 dark:text-zinc-400">
                       <span>Logistics & Packaging</span>
                       <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                        {formatCurrency(pricingEstimate.transport + pricingEstimate.packing)}
+                        {formatCurrency((pricingEstimate.transport || 0) + (pricingEstimate.packing || 0))}
                       </span>
                     </div>
 
-                    {pricingEstimate.discount > 0 && (
+                    {(pricingEstimate.discount || 0) > 0 && (
                       <div className="flex justify-between text-red-500">
                         <span>Promotional Discount</span>
-                        <span className="font-semibold">-{formatCurrency(pricingEstimate.discount)}</span>
+                        <span className="font-semibold">-{formatCurrency(pricingEstimate.discount || 0)}</span>
                       </div>
                     )}
 
                     <div className="flex justify-between text-zinc-600 dark:text-zinc-400 border-t border-zinc-200/60 dark:border-zinc-800 pt-2">
                       <span>GST Tax ({settings.gstRate}%)</span>
-                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatCurrency(pricingEstimate.gst)}</span>
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatCurrency(pricingEstimate.gst || 0)}</span>
                     </div>
 
                     <div className="flex justify-between border-t border-zinc-200 dark:border-zinc-700 pt-2 text-sm font-extrabold text-zinc-950 dark:text-zinc-50">
@@ -1618,27 +1618,27 @@ export default function NewOrder() {
                     <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">Costing Statement</h3>
                     <div className="flex justify-between">
                       <span className="text-zinc-400">Stitching charges</span>
-                      <span>{formatCurrency(pricingEstimate.stitching)}</span>
+                      <span>{formatCurrency(pricingEstimate.stitching || 0)}</span>
                     </div>
-                    {(pricingEstimate.embroidery > 0 || pricingEstimate.printing > 0) && (
+                    {((pricingEstimate.embroidery || 0) > 0 || (pricingEstimate.printing || 0) > 0) && (
                       <div className="flex justify-between">
                         <span className="text-zinc-400">Labor & Printing</span>
-                        <span>{formatCurrency(pricingEstimate.embroidery + pricingEstimate.printing)}</span>
+                        <span>{formatCurrency((pricingEstimate.embroidery || 0) + (pricingEstimate.printing || 0))}</span>
                       </div>
                     )}
                     <div className="flex justify-between">
                       <span className="text-zinc-400">Shipping & Packing</span>
-                      <span>{formatCurrency(pricingEstimate.transport + pricingEstimate.packing)}</span>
+                      <span>{formatCurrency((pricingEstimate.transport || 0) + (pricingEstimate.packing || 0))}</span>
                     </div>
-                    {pricingEstimate.discount > 0 && (
+                    {(pricingEstimate.discount || 0) > 0 && (
                       <div className="flex justify-between text-red-400">
                         <span>Discount</span>
-                        <span>-{formatCurrency(pricingEstimate.discount)}</span>
+                        <span>-{formatCurrency(pricingEstimate.discount || 0)}</span>
                       </div>
                     )}
                     <div className="flex justify-between border-t border-zinc-800 pt-2">
                       <span className="text-zinc-400">GST ({settings.gstRate}%)</span>
-                      <span>{formatCurrency(pricingEstimate.gst)}</span>
+                      <span>{formatCurrency(pricingEstimate.gst || 0)}</span>
                     </div>
                     <div className="flex justify-between border-t border-zinc-700 pt-2 text-sm font-bold text-white">
                       <span>Grand Total</span>

@@ -456,7 +456,7 @@ function InvoicesContent() {
               <div className="w-full sm:max-w-xs space-y-1 border-t sm:border-t-0 border-zinc-200 pt-3 sm:pt-0 self-end text-xs">
                 <div className="flex justify-between py-0.5">
                   <span className="text-zinc-500">Stitching charges</span>
-                  <span className="font-semibold text-zinc-900">{formatCurrency(invoiceOrder.estimate.stitching)}</span>
+                  <span className="font-semibold text-zinc-900">{formatCurrency(invoiceOrder.estimate.stitching || 0)}</span>
                 </div>
                 {(() => {
                   const totalMaterialCost = (invoiceOrder.materials || []).reduce((sum, m) => sum + (m.price && Number(m.price) > 0 ? Number(m.price) : 0), 0);
@@ -468,33 +468,33 @@ function InvoicesContent() {
                     </div>
                   );
                 })()}
-                {invoiceOrder.estimate.embroidery > 0 && (
+                {(invoiceOrder.estimate.embroidery || 0) > 0 && (
                   <div className="flex justify-between py-0.5">
                     <span className="text-zinc-500">Embroidery work</span>
-                    <span className="font-semibold text-zinc-900">{formatCurrency(invoiceOrder.estimate.embroidery)}</span>
+                    <span className="font-semibold text-zinc-900">{formatCurrency(invoiceOrder.estimate.embroidery || 0)}</span>
                   </div>
                 )}
-                {invoiceOrder.estimate.printing > 0 && (
+                {(invoiceOrder.estimate.printing || 0) > 0 && (
                   <div className="flex justify-between py-0.5">
                     <span className="text-zinc-500">Printing fee</span>
-                    <span className="font-semibold text-zinc-900">{formatCurrency(invoiceOrder.estimate.printing)}</span>
+                    <span className="font-semibold text-zinc-900">{formatCurrency(invoiceOrder.estimate.printing || 0)}</span>
                   </div>
                 )}
                 <div className="flex justify-between py-0.5">
                   <span className="text-zinc-500">Logistic Delivery fee</span>
                   <span className="font-semibold text-zinc-900">
-                    {formatCurrency(invoiceOrder.estimate.transport + invoiceOrder.estimate.packing)}
+                    {formatCurrency((invoiceOrder.estimate.transport || 0) + (invoiceOrder.estimate.packing || 0))}
                   </span>
                 </div>
-                {invoiceOrder.estimate.discount > 0 && (
+                {(invoiceOrder.estimate.discount || 0) > 0 && (
                   <div className="flex justify-between py-0.5 text-red-600">
                     <span>Promo Discount</span>
-                    <span className="font-semibold">-{formatCurrency(invoiceOrder.estimate.discount)}</span>
+                    <span className="font-semibold">-{formatCurrency(invoiceOrder.estimate.discount || 0)}</span>
                   </div>
                 )}
                 <div className="flex justify-between border-t border-zinc-150 pt-1">
                   <span className="text-zinc-500">GST ({settings.gstRate}%)</span>
-                  <span className="font-semibold text-zinc-900">{formatCurrency(invoiceOrder.estimate.gst)}</span>
+                  <span className="font-semibold text-zinc-900">{formatCurrency(invoiceOrder.estimate.gst || 0)}</span>
                 </div>
                 <div className="flex justify-between border-t border-zinc-900 pt-1 font-extrabold text-zinc-950 text-sm">
                   <span>Total Order Amount</span>

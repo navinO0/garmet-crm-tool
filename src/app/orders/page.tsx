@@ -437,35 +437,35 @@ function OrdersContent() {
                       <div className="bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-100 dark:border-zinc-850 p-4 rounded-md space-y-2.5 text-xs">
                         <div className="flex justify-between">
                           <span className="text-zinc-500">Stitching Charges</span>
-                          <span className="font-semibold">{formatCurrency(selectedOrder.estimate.stitching)}</span>
+                          <span className="font-semibold">{formatCurrency(selectedOrder.estimate.stitching || 0)}</span>
                         </div>
-                        {selectedOrder.estimate.embroidery > 0 && (
+                        {(selectedOrder.estimate.embroidery || 0) > 0 && (
                           <div className="flex justify-between">
                             <span className="text-zinc-500">Embroidery Work</span>
-                            <span className="font-semibold">{formatCurrency(selectedOrder.estimate.embroidery)}</span>
+                            <span className="font-semibold">{formatCurrency(selectedOrder.estimate.embroidery || 0)}</span>
                           </div>
                         )}
-                        {selectedOrder.estimate.printing > 0 && (
+                        {(selectedOrder.estimate.printing || 0) > 0 && (
                           <div className="flex justify-between">
                             <span className="text-zinc-500">Special Printing</span>
-                            <span className="font-semibold">{formatCurrency(selectedOrder.estimate.printing)}</span>
+                            <span className="font-semibold">{formatCurrency(selectedOrder.estimate.printing || 0)}</span>
                           </div>
                         )}
                         <div className="flex justify-between">
                           <span className="text-zinc-500">Transport & Packing Logistics</span>
                           <span className="font-semibold">
-                            {formatCurrency(selectedOrder.estimate.transport + selectedOrder.estimate.packing)}
+                            {formatCurrency((selectedOrder.estimate.transport || 0) + (selectedOrder.estimate.packing || 0))}
                           </span>
                         </div>
-                        {selectedOrder.estimate.discount > 0 && (
+                        {(selectedOrder.estimate.discount || 0) > 0 && (
                           <div className="flex justify-between text-red-500">
                             <span>Promotional Discount</span>
-                            <span className="font-semibold">-{formatCurrency(selectedOrder.estimate.discount)}</span>
+                            <span className="font-semibold">-{formatCurrency(selectedOrder.estimate.discount || 0)}</span>
                           </div>
                         )}
                         <div className="flex justify-between border-t border-zinc-200/50 dark:border-zinc-800/50 pt-2">
                           <span className="text-zinc-500">GST Tax ({settings.gstRate}%)</span>
-                          <span className="font-semibold">{formatCurrency(selectedOrder.estimate.gst)}</span>
+                          <span className="font-semibold">{formatCurrency(selectedOrder.estimate.gst || 0)}</span>
                         </div>
                         <div className="flex justify-between border-t border-zinc-200/70 dark:border-zinc-800/80 pt-2 text-sm font-extrabold text-zinc-950 dark:text-zinc-50">
                           <span>Total Amount</span>
