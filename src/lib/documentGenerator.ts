@@ -45,6 +45,9 @@ export interface InvoiceDocData {
   balanceDue: number;
   invoiceDate: string;
   dueDate?: string;
+  isBoutique?: boolean;
+  gstAmount?: number;
+  laborPrintingCharges?: number;
 }
 
 export interface AgreementDocData {
@@ -145,7 +148,7 @@ export function generateInvoiceHTML(data: InvoiceDocData): string {
   <style>
     * { box-sizing: border-box !important; }
     html, body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #0f172a; margin: 0; padding: 20px; background-color: #f8fafc; font-size: 12px; line-height: 1.35; width: 100%; }
-    .invoice-card { max-width: 780px; width: 100%; margin: 0 auto; background: #ffffff; padding: 24px 28px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow: hidden; }
+    .invoice-card { max-width: 780px; width: 100%; margin: 0 auto; background: #ffffff; padding: 24px 28px; border-radius: 0; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); overflow: hidden; }
     .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 14px; width: 100%; }
     .brand-title { font-size: 20px; font-weight: 900; color: #0f172a; letter-spacing: 0.5px; }
     .brand-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
@@ -159,7 +162,7 @@ export function generateInvoiceHTML(data: InvoiceDocData): string {
     .summary-box { width: 100%; max-width: 310px; margin-left: auto; font-size: 12px; line-height: 1.4; }
     .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 2.5px 0; width: 100%; }
     .total-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 14px; font-weight: 800; border-top: 1.5px solid #0f172a; border-bottom: 1.5px solid #0f172a; color: #0f172a; margin: 4px 0; width: 100%; }
-    .badge { display: inline-block; padding: 3px 10px; font-size: 10px; font-weight: 700; border-radius: 9999px; background: #e0e7ff; color: #3730a3; white-space: nowrap; }
+    .badge { display: inline-block; padding: 3px 10px; font-size: 10px; font-weight: 700; border-radius: 0; background: #e0e7ff; color: #3730a3; white-space: nowrap; }
     .footer { margin-top: 16px; padding-top: 10px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 10px; color: #94a3b8; width: 100%; }
     @media print {
       html, body { padding: 0 !important; margin: 0 !important; background: white !important; width: 100% !important; }
@@ -172,8 +175,8 @@ export function generateInvoiceHTML(data: InvoiceDocData): string {
   <div class="invoice-card">
     <div class="header">
       <div>
-        <div class="brand-title">RAADHE LABEL</div>
-        <div class="brand-sub">by RADHE VASTRAZ • Bulk Stitching & Private Label Manufacturing</div>
+        <div class="brand-title">${data.isBoutique ? 'RADHE VASTRAZ BOUTIQUE' : 'RAADHE LABEL'}</div>
+        <div class="brand-sub">${data.isBoutique ? 'Bespoke Garments & Custom Tailoring' : 'by RADHE VASTRAZ • Bulk Stitching & Private Label Manufacturing'}</div>
       </div>
       <div>
         <div class="inv-title">INVOICE</div>
@@ -244,14 +247,16 @@ export function generateInvoiceHTML(data: InvoiceDocData): string {
           `).join('')}
         </tbody>
       </table>
-      ${data.materialReceivedDetails ? `<div style="font-size: 10px; color: #64748b; font-style: italic; background: #f8fafc; padding: 6px 8px; border-radius: 4px; border: 1px solid #f1f5f9;"><strong>Material Received Log:</strong> ${data.materialReceivedDetails}</div>` : ''}
+      ${data.materialReceivedDetails ? `<div style="font-size: 10px; color: #64748b; font-style: italic; background: #f8fafc; padding: 6px 8px; border-radius: 0; border: 1px solid #f1f5f9;"><strong>Material Received Log:</strong> ${data.materialReceivedDetails}</div>` : ''}
     </div>
     ` : ''}
 
     <div class="summary-box">
       <div class="summary-row"><span>Stitching Subtotal:</span><span>₹${data.subtotal.toLocaleString('en-IN')}</span></div>
+      ${data.laborPrintingCharges && data.laborPrintingCharges > 0 ? `<div class="summary-row"><span>Labor & Printing:</span><span>₹${data.laborPrintingCharges.toLocaleString('en-IN')}</span></div>` : ''}
       ${data.packingCharges > 0 ? `<div class="summary-row"><span>Packing & Branding:</span><span>₹${data.packingCharges.toLocaleString('en-IN')}</span></div>` : ''}
       ${data.shippingCharges > 0 ? `<div class="summary-row"><span>Shipping Charges:</span><span>₹${data.shippingCharges.toLocaleString('en-IN')}</span></div>` : ''}
+      ${data.gstAmount && data.gstAmount > 0 ? `<div class="summary-row"><span>GST:</span><span>₹${data.gstAmount.toLocaleString('en-IN')}</span></div>` : ''}
       ${data.discountAmount && data.discountAmount > 0 ? `<div class="summary-row" style="color: #059669; font-weight: 600;"><span>Order Discount:</span><span>- ₹${data.discountAmount.toLocaleString('en-IN')}</span></div>` : ''}
       <div class="total-row"><span>Total Order Amount:</span><span>₹${data.totalAmount.toLocaleString('en-IN')}</span></div>
       <div class="summary-row" style="color: #059669; font-weight: 600;"><span>Advance Paid / Required:</span><span>- ₹${data.advancePaid.toLocaleString('en-IN')}</span></div>
@@ -259,7 +264,7 @@ export function generateInvoiceHTML(data: InvoiceDocData): string {
     </div>
 
     <div class="footer">
-      Thank you for doing business with RAADHE LABEL by RADHE VASTRAZ.
+      Thank you for doing business with ${data.isBoutique ? 'RADHE VASTRAZ BOUTIQUE' : 'RAADHE LABEL by RADHE VASTRAZ'}.
     </div>
   </div>
 </body>
@@ -276,7 +281,7 @@ export function generateAgreementHTML(data: AgreementDocData): string {
   <title>Bulk Stitching Agreement - ${data.orderNumber}</title>
   <style>
     body { font-family: 'Times New Roman', Georgia, serif; color: #1f2937; margin: 0; padding: 40px; background-color: #f9fafb; line-height: 1.6; }
-    .doc-card { max-width: 850px; margin: 0 auto; background: #ffffff; padding: 50px; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
+    .doc-card { max-width: 850px; margin: 0 auto; background: #ffffff; padding: 50px; border-radius: 0; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
     h1 { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 1px; }
     h2 { text-align: center; font-size: 18px; font-weight: normal; margin-top: 0; margin-bottom: 24px; color: #4b5563; }
     .meta-box { background: #f8fafc; padding: 15px 20px; border: 1px solid #e2e8f0; margin-bottom: 30px; font-family: sans-serif; font-size: 14px; }
@@ -284,7 +289,7 @@ export function generateAgreementHTML(data: AgreementDocData): string {
     ul { margin-top: 6px; padding-left: 20px; }
     li { margin-bottom: 6px; font-size: 14px; }
     .signatures-grid { display: flex; justify-content: space-between; margin-top: 40px; gap: 20px; page-break-inside: avoid; }
-    .sig-box { flex: 1; border: 1px solid #cbd5e1; padding: 16px; border-radius: 4px; font-family: sans-serif; font-size: 13px; background: #fafafa; }
+    .sig-box { flex: 1; border: 1px solid #cbd5e1; padding: 16px; border-radius: 0; font-family: sans-serif; font-size: 13px; background: #fafafa; }
     .sig-title { font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 12px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
     .sig-img { height: 60px; max-width: 180px; object-fit: contain; margin: 10px 0; border-bottom: 1px dashed #94a3b8; }
     .initials-row { margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-family: sans-serif; font-size: 13px; }
@@ -416,11 +421,11 @@ export function generateSizeChartHTML(data: SizeChartDocData): string {
   <style>
     * { box-sizing: border-box !important; }
     body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #0f172a; margin: 0; padding: 25px; background-color: #f8fafc; font-size: 12px; line-height: 1.4; }
-    .doc-card { max-width: 800px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .doc-card { max-width: 800px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 0; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .header { border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: flex-start; }
     .brand { font-size: 18px; font-weight: 900; color: #0f172a; }
     .doc-title { font-size: 18px; font-weight: 900; color: #4f46e5; text-align: right; letter-spacing: 0.5px; }
-    .meta { background: #f8fafc; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 16px; display: flex; justify-content: space-between; font-size: 11px; }
+    .meta { background: #f8fafc; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 0; margin-bottom: 16px; display: flex; justify-content: space-between; font-size: 11px; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 12px; }
     th { background: #f8fafc; padding: 6px 8px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; border-bottom: 1.5px solid #cbd5e1; }
     .footer { border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center; font-size: 10px; color: #94a3b8; }
@@ -503,7 +508,7 @@ export function generateSizeChartHTML(data: SizeChartDocData): string {
       </table>
     </div>
 
-    <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; font-size: 10.5px; color: #1e3a8a; line-height: 1.4;">
+    <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px 14px; border-radius: 0; margin-bottom: 14px; font-size: 10.5px; color: #1e3a8a; line-height: 1.4;">
       <strong>Client Fitting & Measurement Awareness Guide:</strong><br>
       • <strong>Ease Allowance:</strong> Garments are tailored with 1.5 to 2.0 inches of ease over body measurements for comfort and mobility.<br>
       • <strong>Internal Alteration Margins:</strong> Every garment includes 2.0 inches of internal side seam margins for future size adjustments.<br>

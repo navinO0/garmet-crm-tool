@@ -1,5 +1,5 @@
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -138,6 +138,7 @@ model OutfitStyle {
   materialRequiredSpecs String?
   materialsJson         String?  // JSON array of itemized material requirements per piece
   description           String?
+  referenceImages       String?  // JSON array of reference image URLs for this style
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

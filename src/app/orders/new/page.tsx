@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   Scissors,
   FileText,
+  Printer,
   DollarSign,
   CheckCircle,
   Search,
@@ -32,14 +33,13 @@ import { NumberInput } from "@/components/ui/number-input";
 import { ColorPickerInput } from "@/components/ui/color-picker";
 import { GarmentSizeSelector } from "@/components/customers/GarmentSizeSelector";
 import { GARMENT_SIZE_CONFIGS, GarmentType } from "@/config/sizeCharts";
+import { generateInvoiceHTML, generateSizeChartHTML } from "@/lib/documentGenerator";
 
 
 const STEPS = [
   "Customer",
   "Order Info",
-  "Measurements",
-  "Garment Items",
-  "Materials",
+  "Garments, Sizes & Materials",
   "Estimate",
   "Payment",
   "Review",
@@ -48,9 +48,7 @@ const STEPS = [
 const MOBILE_STEPS = [
   "Client",
   "Info",
-  "Sizes",
-  "Items",
-  "Fabric",
+  "Items, Sizes & Fabric",
   "Cost",
   "Pay",
   "Done",
@@ -137,6 +135,39 @@ export default function NewOrder() {
   const { customers, settings, addOrder, addCustomer, addSizeSet } = useProductionStore();
 
   const [step, setStep] = useState(0);
+  const [outfitStyles, setOutfitStyles] = useState<any[]>([]);
+  const [dbGstEnabled, setDbGstEnabled] = useState(false);
+  const [dbGstRate, setDbGstRate] = useState(18);
+
+  useEffect(() => {
+    const fetchStyles = async () => {
+      try {
+        const res = await fetch("/api/settings/outfit-styles");
+        if (res.ok) {
+          const data = await res.json();
+          setOutfitStyles(data.styles || []);
+        }
+      } catch (err) {
+        console.error("Failed fetching styles", err);
+      }
+    };
+    const fetchGst = async () => {
+      try {
+        const res = await fetch("/api/settings/gst");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.setting) {
+            setDbGstEnabled(data.setting.gstEnabled);
+            setDbGstRate(data.setting.gstPercentage);
+          }
+        }
+      } catch (err) {
+        console.error("Failed fetching GST settings", err);
+      }
+    };
+    fetchStyles();
+    fetchGst();
+  }, []);
 
   // Step 1: Customer State
   const [customerSearch, setCustomerSearch] = useState("");
@@ -482,6 +513,84 @@ export default function NewOrder() {
     setCustomFields(updated);
   };
 
+  const handleSelectOutfitStyle = (index: number, styleId: string) => {
+    const selected = outfitStyles.find((s) => s.id === styleId);
+    const updated = [...products];
+    if (selected) {
+      updated[index] = {
+        ...updated[index],
+        product: selected.name,
+        price: selected.baseStitchingCost || 0,
+        // @ts-ignore
+        outfitStyleId: selected.id
+      };
+
+      // Auto-detect garment type / category from style name or category string
+      const styleName = selected.name.toLowerCase();
+      const styleCategory = (selected.category || "").toLowerCase();
+      let determinedType: GarmentType = "Custom";
+
+      if (styleName.includes("kurta set") || styleName.includes("kurti set") || styleCategory.includes("kurta set") || styleCategory.includes("kurti set")) {
+        determinedType = "Kurta Set";
+      } else if (styleName.includes("coord set") || styleName.includes("cord set") || styleCategory.includes("coord set") || styleCategory.includes("cord set")) {
+        determinedType = "Coord Set";
+      } else if (styleName.includes("blouse") || styleCategory.includes("blouse")) {
+        determinedType = "Blouse";
+      } else if (styleName.includes("kurti") || styleCategory.includes("kurti")) {
+        determinedType = "Kurti";
+      } else if (styleName.includes("gown") || styleName.includes("frock") || styleName.includes("dress") || styleCategory.includes("gown") || styleCategory.includes("frock") || styleCategory.includes("dress")) {
+        determinedType = "Dress/Gown";
+      } else if (styleName.includes("lehenga") || styleCategory.includes("lehenga")) {
+        determinedType = "Lehenga";
+      } else if (styleName.includes("bottom") || styleName.includes("pant") || styleName.includes("salwar") || styleCategory.includes("bottom") || styleCategory.includes("pant") || styleCategory.includes("salwar")) {
+        determinedType = "Bottom Wear";
+      }
+
+      // Auto-populate size chart configuration and measurements
+      const newConfig = GARMENT_SIZE_CONFIGS[determinedType] || GARMENT_SIZE_CONFIGS["Custom"];
+      if (newConfig) {
+        if (determinedType === "Coord Set") {
+          const defaultTop = "M";
+          const defaultBottom = "30";
+          const autoFilled = newConfig.getMeasurements(defaultTop, defaultBottom);
+          setMeasurements({
+            ...measurements,
+            measurementMode: measurements.measurementMode || "standard",
+            garmentType: determinedType,
+            topSize: defaultTop,
+            bottomSize: defaultBottom,
+            standardSize: `Top: ${defaultTop} / Bottom: ${defaultBottom}`,
+            ...autoFilled,
+          });
+        } else {
+          // Blouse default size is 34; other categories default to M
+          const defaultSize = newConfig.availableSizes.includes("34")
+            ? "34"
+            : newConfig.availableSizes.includes("M")
+            ? "M"
+            : newConfig.availableSizes[0];
+          const autoFilled = newConfig.getMeasurements(defaultSize);
+          setMeasurements({
+            ...measurements,
+            measurementMode: measurements.measurementMode || "standard",
+            garmentType: determinedType,
+            standardSize: defaultSize,
+            ...autoFilled,
+          });
+        }
+      }
+    } else {
+      updated[index] = {
+        ...updated[index],
+        product: "",
+        price: 0,
+        // @ts-ignore
+        outfitStyleId: undefined
+      };
+    }
+    setProducts(updated);
+  };
+
   // Step 5: Product dynamic rows
   const handleAddProduct = () => {
     setProducts([...products, { product: "", quantity: 1, stitchType: "Standard Stitch", price: 0, notes: "" }]);
@@ -513,7 +622,7 @@ export default function NewOrder() {
     const totalEmbroidery = embroidery * totalProductQty;
     const totalPrinting = printing * totalProductQty;
     const subtotal = stitchingTotal + materialsTotal + totalEmbroidery + totalPrinting + transport + packing - discount;
-    const gst = Math.max(0, subtotal * (settings.gstRate / 100));
+    const gst = dbGstEnabled ? Math.max(0, subtotal * (dbGstRate / 100)) : 0;
     const total = Math.max(0, subtotal + gst);
     return {
       stitching: stitchingTotal,
@@ -523,9 +632,10 @@ export default function NewOrder() {
       packing,
       discount,
       gst,
+      subtotal,
       total,
     };
-  }, [stitchingTotal, materialsTotal, embroidery, printing, totalProductQty, transport, packing, discount, settings.gstRate]);
+  }, [stitchingTotal, materialsTotal, embroidery, printing, totalProductQty, transport, packing, discount, dbGstEnabled, dbGstRate]);
 
   const [draftRestored, setDraftRestored] = useState(false);
 
@@ -614,6 +724,71 @@ export default function NewOrder() {
   };
 
   // Navigation Logic
+  const populatePresetMaterials = () => {
+    const collected: Omit<MaterialItem, "id">[] = [];
+
+    products.forEach((prod) => {
+      // @ts-ignore
+      const styleId = prod.outfitStyleId;
+      if (!styleId) return;
+
+      const style = outfitStyles.find((s) => s.id === styleId);
+      if (!style || !style.materialsJson) return;
+
+      try {
+        const parsed = JSON.parse(style.materialsJson);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((mat: any) => {
+            collected.push({
+              material: mat.name || mat.material || "",
+              color: "",
+              unit: mat.unit || "meters",
+              quantity: (mat.quantityPerPc || mat.quantity || 0) * (prod.quantity || 1),
+              price: undefined,
+              notes: `Preset: ${style.name}`,
+              estimateCategory: style.category || "Custom"
+            });
+          });
+        }
+      } catch (e) {
+        console.error("Failed parsing preset materialsJson", e);
+      }
+    });
+
+    if (collected.length > 0) {
+      const isDefaultEmpty = materials.length === 1 && materials[0].material === "" && (materials[0].quantity === 0 || !materials[0].quantity);
+      if (isDefaultEmpty) {
+        setMaterials(collected);
+      } else {
+        const existingNames = new Set(materials.map((m) => m.material.toLowerCase().trim()));
+        const toAppend = collected.filter((c) => !existingNames.has(c.material.toLowerCase().trim()));
+        if (toAppend.length > 0) {
+          setMaterials([...materials, ...toAppend]);
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    populatePresetMaterials();
+  }, [products]);
+
+  useEffect(() => {
+    const focusFirstInput = () => {
+      const input = document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>(
+        "input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled]), button[role='combobox']"
+      );
+      if (input) {
+        input.focus();
+        if (input.tagName === "INPUT" && typeof input.select === "function") {
+          input.select();
+        }
+      }
+    };
+    const timer = setTimeout(focusFirstInput, 150);
+    return () => clearTimeout(timer);
+  }, [step]);
+
   const handleNext = () => {
     if (step === 0 && !selectedCustomerId) {
       alert("Please select a customer or create a new one first.");
@@ -623,7 +798,7 @@ export default function NewOrder() {
       alert("Please specify a delivery date.");
       return;
     }
-    if (step === 3 && products.some((p) => !p.product || p.price <= 0)) {
+    if (step === 2 && products.some((p) => !p.product || p.price <= 0)) {
       alert("Please specify garment item description and price for all items.");
       return;
     }
@@ -696,6 +871,77 @@ export default function NewOrder() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
+  };
+
+  const handlePrintDraftInvoice = () => {
+    if (!selectedCustomerObj) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Please allow popups to preview the invoice.");
+      return;
+    }
+
+    const items = products.map((p) => ({
+      itemDescription: p.product || "Garment Item",
+      category: p.stitchType,
+      quantity: p.quantity,
+      unitRate: p.price,
+      totalPrice: p.price * p.quantity,
+      fabricDetails: p.notes,
+    }));
+
+    const subtotal = pricingEstimate.stitching || 0;
+    const laborPrinting = (pricingEstimate.embroidery || 0) + (pricingEstimate.printing || 0);
+    const shipping = pricingEstimate.transport || 0;
+    const packing = pricingEstimate.packing || 0;
+    const totalAmount = pricingEstimate.total;
+    const advancePaid = initialPayment;
+    const balanceDue = Math.max(0, totalAmount - advancePaid);
+
+    const invoiceHtml = generateInvoiceHTML({
+      invoiceNumber: `DRAFT-${Date.now().toString().slice(-4)}`,
+      orderNumber: "DRAFT",
+      clientName: selectedCustomerObj.name,
+      businessName: selectedCustomerObj.company || undefined,
+      mobileNumber: selectedCustomerObj.phone || "",
+      email: selectedCustomerObj.email || undefined,
+      address: selectedCustomerObj.address || orderNotes || undefined,
+      paymentTerms: `Payment Terms: ${advancePaid > 0 ? formatCurrency(advancePaid) : 'No'} Advance`,
+      items,
+      subtotal,
+      laborPrintingCharges: laborPrinting,
+      shippingCharges: shipping,
+      packingCharges: packing,
+      gstAmount: pricingEstimate.gst,
+      discountAmount: pricingEstimate.discount,
+      totalAmount,
+      advancePaid,
+      balanceDue,
+      invoiceDate: new Date().toLocaleDateString(),
+      isBoutique: true,
+    });
+
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Draft_Invoice_${selectedCustomerObj.name.replace(/\s+/g, '_')}</title>
+          <style>
+            * { box-sizing: border-box !important; }
+            @media print {
+              button, .print-hide { display: none !important; }
+            }
+          </style>
+        </head>
+        <body style="margin: 0; padding: 0; background: #fff;">
+          ${invoiceHtml}
+          <script>window.onload = function() { window.print(); };</script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(fullHtml);
+    printWindow.document.close();
   };
 
   return (
@@ -926,154 +1172,113 @@ export default function NewOrder() {
             </div>
           )}
 
-          {/* STEP 4: Materials Section */}
-          {step === 4 && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center border-b border-zinc-150 dark:border-zinc-800 pb-3">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-450 flex items-center">
-                  <Scissors className="h-4 w-4 mr-2" /> Material Requirements Checklist
-                </h2>
-                <Button type="button" variant="outline" size="sm" onClick={handleAddMaterial} className="h-8 text-xs font-semibold">
-                  + Add Material Row
-                </Button>
-              </div>
 
-              <div className="space-y-4">
-                {materials.map((m, index) => (
-                  <div key={index} className="grid grid-cols-1 sm:grid-cols-7 gap-3 p-4 bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-150 dark:border-zinc-850 rounded-md items-end">
-                    <div className="space-y-1">
-                      <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Material Name</Label>
-                      <Input
-                        placeholder="e.g. Silk Organza"
-                        value={m.material}
-                        onChange={(e) => handleMaterialChange(index, "material", e.target.value)}
-                        className="h-9 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Color / Dye</Label>
-                      <ColorPickerInput
-                        placeholder="e.g. Ivory #09"
-                        value={m.color}
-                        onChange={(col) => handleMaterialChange(index, "color", col)}
-                        className="h-9 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Unit Type</Label>
-                      <Input
-                        placeholder="meters"
-                        value={m.unit}
-                        onChange={(e) => handleMaterialChange(index, "unit", e.target.value)}
-                        className="h-9 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Garment Type</Label>
-                      <Select
-                        value={m.estimateCategory || "Kurta/Shirt"}
-                        onValueChange={(val) => handleMaterialChange(index, "estimateCategory", val)}
-                      >
-                        <SelectTrigger className="h-9 text-xs bg-white dark:bg-zinc-900 border-zinc-250 dark:border-zinc-800">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Kurta/Shirt">Kurta/Shirt</SelectItem>
-                          <SelectItem value="Pants">Trouser/Pants</SelectItem>
-                          <SelectItem value="Blouse">Blouse (Choli)</SelectItem>
-                          <SelectItem value="Gown/Dress">Dress/Gown</SelectItem>
-                          <SelectItem value="Custom">Custom / Other Garment</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {m.estimateCategory === "Custom" && (
+
+          {/* STEP 2: Garments & Measurements */}
+          {step === 2 && (
+            <div className="space-y-8">
+              {/* Garments to Tailor Block */}
+              <div className="space-y-6">
+                <div className="flex justify-between items-center border-b border-zinc-150 dark:border-zinc-800 pb-3">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-450 flex items-center">
+                    <ShoppingBag className="h-4 w-4 mr-2 text-zinc-500" /> Garments to Tailor
+                  </h2>
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddProduct} className="h-8 text-xs font-semibold">
+                    + Add Garment Item
+                  </Button>
+                </div>
+
+                <div className="space-y-4">
+                  {products.map((p, index) => (
+                    <div key={index} className="grid grid-cols-1 sm:grid-cols-6 gap-3 p-4 bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-150 dark:border-zinc-850 rounded-md items-end">
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Preset Style</Label>
+                        <select
+                          // @ts-ignore
+                          value={p.outfitStyleId || ""}
+                          onChange={(e) => handleSelectOutfitStyle(index, e.target.value)}
+                          className="w-full h-9 px-2 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:ring-1 focus:ring-zinc-400"
+                        >
+                          <option value="">Custom Outfit</option>
+                          {outfitStyles.map((style) => (
+                            <option key={style.id} value={style.id}>
+                              {style.name} (₹{style.baseStitchingCost})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1 sm:col-span-2">
+                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Garment Description *</Label>
                         <Input
-                          placeholder="Garment name (e.g. Sharara)"
-                          value={m.customCategory || ""}
-                          onChange={(e) => handleMaterialChange(index, "customCategory", e.target.value)}
-                          className="h-8 text-xs mt-1 bg-white dark:bg-zinc-900 border-amber-300 dark:border-amber-800"
-                        />
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Quantity Needed</Label>
-                      <NumberInput
-                        value={m.quantity || ""}
-                        onChange={(val) => handleMaterialChange(index, "quantity", val)}
-                        className="h-9 text-xs"
-                      />
-                      {(() => {
-                        const suggestion = calculateSuggestedFabric(measurements, m.unit, m.estimateCategory, products);
-                        if (!suggestion) return null;
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => handleMaterialChange(index, "quantity", suggestion.amount)}
-                            className="text-[9px] text-left text-zinc-550 hover:text-black dark:text-zinc-400 dark:hover:text-white mt-1 underline cursor-pointer block font-semibold transition"
-                            title={suggestion.description}
-                          >
-                            Suggest: {suggestion.amount} {m.unit}
-                          </button>
-                        );
-                      })()}
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 flex items-center justify-between">
-                        <span>Price (₹)</span>
-                        <span className="text-[8px] text-zinc-400 font-normal">Optional</span>
-                      </Label>
-                      <NumberInput
-                        placeholder="e.g. 500"
-                        value={m.price ?? ""}
-                        onChange={(val) => handleMaterialChange(index, "price", val)}
-                        className="h-9 text-xs"
-                      />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="space-y-1 flex-1">
-                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Fabric Notes</Label>
-                        <Input
-                          placeholder="Notes"
-                          value={m.notes}
-                          onChange={(e) => handleMaterialChange(index, "notes", e.target.value)}
+                          placeholder="e.g. Silk Tuxedo Jacket"
+                          value={p.product}
+                          onChange={(e) => handleProductChange(index, "product", e.target.value)}
                           className="h-9 text-xs"
                         />
                       </div>
-                      {materials.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveMaterial(index)}
-                          className="text-red-500 h-9 w-9 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 shrink-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Stitch Type / Tier</Label>
+                        <Input
+                          placeholder="e.g. Bespoke Couture"
+                          value={p.stitchType}
+                          onChange={(e) => handleProductChange(index, "stitchType", e.target.value)}
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Quantity</Label>
+                        <NumberInput
+                          value={p.quantity || 1}
+                          onChange={(val) => handleProductChange(index, "quantity", val)}
+                          allowDecimals={false}
+                          min={1}
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="space-y-1 flex-1">
+                          <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Unit Price ({settings.currencySymbol}) *</Label>
+                          <NumberInput
+                            value={p.price || ""}
+                            onChange={(val) => handleProductChange(index, "price", val)}
+                            className="h-9 text-xs"
+                          />
+                        </div>
+                        {products.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveProduct(index)}
+                            className="text-red-500 h-9 w-9 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* STEP 2: Measurements */}
-          {step === 2 && (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-zinc-150 dark:border-zinc-800 pb-3">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-blue-500 shrink-0" />
-                  <span>Fitting Dimensions & Size Chart</span>
-                </h2>
-                <Button type="button" variant="outline" size="sm" onClick={handleAddCustomField} className="h-8 text-xs font-semibold shrink-0">
-                  + Add Custom Field
-                </Button>
+                  ))}
+                </div>
               </div>
 
-              {/* Garment-wise Standard Size Chart & Custom Mode Selector */}
-              <GarmentSizeSelector
-                measurements={measurements}
-                onChange={(updated) => setMeasurements(updated)}
-              />
+              {/* Fitting Dimensions & Size Chart Block */}
+              <div className="border-t border-zinc-200/60 dark:border-zinc-800 pt-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-zinc-150 dark:border-zinc-800 pb-3 mb-6">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-850 dark:text-zinc-200 flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                    <span>Fitting Dimensions & Size Chart</span>
+                  </h2>
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddCustomField} className="h-8 text-xs font-semibold shrink-0">
+                    + Add Custom Field
+                  </Button>
+                </div>
+
+                {/* Garment-wise Standard Size Chart & Custom Mode Selector */}
+                <GarmentSizeSelector
+                  measurements={measurements}
+                  onChange={(updated) => setMeasurements(updated)}
+                />
+              </div>
 
               {selectedCustomerObj && (
                 <div className="space-y-4">
@@ -1261,81 +1466,141 @@ export default function NewOrder() {
                   className="min-h-20 text-xs bg-zinc-50/50 dark:bg-zinc-950"
                 />
               </div>
-            </div>
-          )}
 
-          {/* STEP 3: Product Items (Garments to Tailor) */}
-          {step === 3 && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center border-b border-zinc-150 dark:border-zinc-800 pb-3">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-450 flex items-center">
-                  <ShoppingBag className="h-4 w-4 mr-2" /> Garments to Tailor
-                </h2>
-                <Button type="button" variant="outline" size="sm" onClick={handleAddProduct} className="h-8 text-xs font-semibold">
-                  + Add Garment Item
-                </Button>
-              </div>
+              {/* Materials Block */}
+              <div className="border-t border-zinc-200/60 dark:border-zinc-800 pt-6">
+                <div className="flex justify-between items-center border-b border-zinc-150 dark:border-zinc-800 pb-3 mb-6">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-450 flex items-center">
+                    <Scissors className="h-4 w-4 mr-2 text-zinc-500" /> Material Requirements Checklist
+                  </h2>
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddMaterial} className="h-8 text-xs font-semibold">
+                    + Add Material Row
+                  </Button>
+                </div>
 
-              <div className="space-y-4">
-                {products.map((p, index) => (
-                  <div key={index} className="grid grid-cols-1 sm:grid-cols-5 gap-3 p-4 bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-150 dark:border-zinc-850 rounded-md items-end">
-                    <div className="space-y-1 sm:col-span-2">
-                      <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Garment Description *</Label>
-                      <Input
-                        placeholder="e.g. Silk Tuxedo Jacket"
-                        value={p.product}
-                        onChange={(e) => handleProductChange(index, "product", e.target.value)}
-                        className="h-9 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Stitch Type / Tier</Label>
-                      <Input
-                        placeholder="e.g. Bespoke Couture"
-                        value={p.stitchType}
-                        onChange={(e) => handleProductChange(index, "stitchType", e.target.value)}
-                        className="h-9 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Quantity</Label>
-                      <NumberInput
-                        value={p.quantity || 1}
-                        onChange={(val) => handleProductChange(index, "quantity", val)}
-                        allowDecimals={false}
-                        min={1}
-                        className="h-9 text-xs"
-                      />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="space-y-1 flex-1">
-                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Unit Price ({settings.currencySymbol}) *</Label>
-                        <NumberInput
-                          value={p.price || ""}
-                          onChange={(val) => handleProductChange(index, "price", val)}
+                <div className="space-y-4">
+                  {materials.map((m, index) => (
+                    <div key={index} className="grid grid-cols-1 sm:grid-cols-7 gap-3 p-4 bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-150 dark:border-zinc-850 rounded-md items-end">
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Material Name</Label>
+                        <Input
+                          placeholder="e.g. Silk Organza"
+                          value={m.material}
+                          onChange={(e) => handleMaterialChange(index, "material", e.target.value)}
                           className="h-9 text-xs"
                         />
                       </div>
-                      {products.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveProduct(index)}
-                          className="text-red-500 h-9 w-9 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800"
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Color / Dye</Label>
+                        <ColorPickerInput
+                          placeholder="e.g. Ivory #09"
+                          value={m.color}
+                          onChange={(col) => handleMaterialChange(index, "color", col)}
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Unit Type</Label>
+                        <Input
+                          placeholder="meters"
+                          value={m.unit}
+                          onChange={(e) => handleMaterialChange(index, "unit", e.target.value)}
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Garment Type</Label>
+                        <Select
+                          value={m.estimateCategory || "Kurta/Shirt"}
+                          onValueChange={(val) => handleMaterialChange(index, "estimateCategory", val)}
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                          <SelectTrigger className="h-9 text-xs bg-white dark:bg-zinc-900 border-zinc-250 dark:border-zinc-800">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Kurta/Shirt">Kurta/Shirt</SelectItem>
+                            <SelectItem value="Pants">Trouser/Pants</SelectItem>
+                            <SelectItem value="Blouse">Blouse (Choli)</SelectItem>
+                            <SelectItem value="Gown/Dress">Dress/Gown</SelectItem>
+                            <SelectItem value="Custom">Custom / Other Garment</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {m.estimateCategory === "Custom" && (
+                          <Input
+                            placeholder="Garment name (e.g. Sharara)"
+                            value={m.customCategory || ""}
+                            onChange={(e) => handleMaterialChange(index, "customCategory", e.target.value)}
+                            className="h-8 text-xs mt-1 bg-white dark:bg-zinc-900 border-amber-300 dark:border-amber-800"
+                          />
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Quantity Needed</Label>
+                        <NumberInput
+                          value={m.quantity || ""}
+                          onChange={(val) => handleMaterialChange(index, "quantity", val)}
+                          className="h-9 text-xs"
+                        />
+                        {(() => {
+                          const suggestion = calculateSuggestedFabric(measurements, m.unit, m.estimateCategory, products);
+                          if (!suggestion) return null;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleMaterialChange(index, "quantity", suggestion.amount)}
+                              className="text-[9px] text-left text-zinc-550 hover:text-black dark:text-zinc-400 dark:hover:text-white mt-1 underline cursor-pointer block font-semibold transition"
+                              title={suggestion.description}
+                            >
+                              Suggest: {suggestion.amount} {m.unit}
+                            </button>
+                          );
+                        })()}
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 flex items-center justify-between">
+                          <span>Price (₹)</span>
+                          <span className="text-[8px] text-zinc-400 font-normal">Optional</span>
+                        </Label>
+                        <NumberInput
+                          placeholder="e.g. 500"
+                          value={m.price ?? ""}
+                          onChange={(val) => handleMaterialChange(index, "price", val)}
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="space-y-1 flex-1">
+                          <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Fabric Notes</Label>
+                          <Input
+                            placeholder="Notes"
+                            value={m.notes}
+                            onChange={(e) => handleMaterialChange(index, "notes", e.target.value)}
+                            className="h-9 text-xs"
+                          />
+                        </div>
+                        {materials.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveMaterial(index)}
+                            className="text-red-500 h-9 w-9 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
-          {/* STEP 5: Estimate pricing */}
-          {step === 5 && (
+
+
+          {/* STEP 3: Estimate pricing */}
+          {step === 3 && (
             <div className="space-y-6">
               <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-450 border-b border-zinc-150 dark:border-zinc-800 pb-3 flex items-center">
                 <DollarSign className="h-4 w-4 mr-2" /> Costing & Adjustments
@@ -1430,10 +1695,12 @@ export default function NewOrder() {
                       <span className="font-semibold">-{formatCurrency(pricingEstimate.discount || 0)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between border-t pt-2 border-zinc-200/50 dark:border-zinc-800">
-                    <span className="text-zinc-500">GST ({settings.gstRate}%)</span>
-                    <span className="font-semibold">{formatCurrency(pricingEstimate.gst || 0)}</span>
-                  </div>
+                  {dbGstEnabled && (
+                    <div className="flex justify-between border-t pt-2 border-zinc-200/50 dark:border-zinc-800">
+                      <span className="text-zinc-500">GST ({dbGstRate}%)</span>
+                      <span className="font-semibold">{formatCurrency(pricingEstimate.gst || 0)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t pt-2 border-zinc-200/80 dark:border-zinc-800 text-sm font-extrabold text-zinc-900 dark:text-zinc-50">
                     <span>Grand Total</span>
                     <span>{formatCurrency(pricingEstimate.total)}</span>
@@ -1443,8 +1710,8 @@ export default function NewOrder() {
             </div>
           )}
 
-          {/* STEP 6: Payment Screen */}
-          {step === 6 && (
+          {/* STEP 4: Payment Screen */}
+          {step === 4 && (
             <div className="space-y-6">
               <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-450 border-b border-zinc-150 dark:border-zinc-800 pb-3 flex items-center">
                 <DollarSign className="h-4 w-4 mr-2" /> Initial Payment Deposit
@@ -1578,8 +1845,8 @@ export default function NewOrder() {
             </div>
           )}
 
-          {/* STEP 7: Review order before saving */}
-          {step === 7 && selectedCustomerObj && (
+          {/* STEP 5: Review order before saving */}
+          {step === 5 && selectedCustomerObj && (
             <div className="space-y-6">
               <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-450 border-b border-zinc-150 dark:border-zinc-800 pb-3 flex items-center">
                 <CheckCircle className="h-4 w-4 mr-2 text-emerald-500" /> Verify Details & Blueprint
@@ -1636,10 +1903,12 @@ export default function NewOrder() {
                         <span>-{formatCurrency(pricingEstimate.discount || 0)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between border-t border-zinc-800 pt-2">
-                      <span className="text-zinc-400">GST ({settings.gstRate}%)</span>
-                      <span>{formatCurrency(pricingEstimate.gst || 0)}</span>
-                    </div>
+                    {dbGstEnabled && (
+                      <div className="flex justify-between border-t border-zinc-800 pt-2">
+                        <span className="text-zinc-400">GST ({dbGstRate}%)</span>
+                        <span>{formatCurrency(pricingEstimate.gst || 0)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between border-t border-zinc-700 pt-2 text-sm font-bold text-white">
                       <span>Grand Total</span>
                       <span>{formatCurrency(pricingEstimate.total)}</span>
@@ -1660,32 +1929,46 @@ export default function NewOrder() {
         </CardContent>
 
         {/* Footer Navigation Buttons */}
-        <div className="p-6 border-t border-zinc-150 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-6 border-t border-zinc-150 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <Button
             type="button"
             variant="outline"
             onClick={handleBack}
             disabled={step === 0}
-            className="font-semibold"
+            className="font-semibold shrink-0"
           >
-            <ChevronLeft className="mr-2 h-4 w-4" /> Back
+            <ChevronLeft className="mr-1.5 h-4 w-4" /> Back
           </Button>
 
           {step === STEPS.length - 1 ? (
-            <Button
-              type="button"
-              onClick={handleSubmitOrder}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer shadow-sm"
-            >
-              Submit Order <CheckCircle className="ml-2 h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrintDraftInvoice}
+                className="border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 font-semibold cursor-pointer shrink-0"
+              >
+                <Printer className="mr-1.5 h-4 w-4 text-zinc-500" />
+                <span className="hidden sm:inline">Preview &amp; Print Invoice</span>
+                <span className="sm:hidden">Print</span>
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSubmitOrder}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer shadow-sm shrink-0"
+              >
+                <span className="hidden sm:inline">Submit Order</span>
+                <span className="sm:hidden">Submit</span>
+                <CheckCircle className="ml-1.5 h-4 w-4" />
+              </Button>
+            </div>
           ) : (
             <Button
               type="button"
               onClick={handleNext}
-              className="font-semibold cursor-pointer"
+              className="font-semibold cursor-pointer shrink-0"
             >
-              Next <ChevronRight className="ml-2 h-4 w-4" />
+              Next <ChevronRight className="ml-1.5 h-4 w-4" />
             </Button>
           )}
         </div>

@@ -20,6 +20,17 @@ export function GarmentSizeSelector({ measurements, onChange }: GarmentSizeSelec
   const garmentType = (measurements.garmentType as GarmentType) || "Blouse";
   const config = GARMENT_SIZE_CONFIGS[garmentType] || GARMENT_SIZE_CONFIGS["Blouse"];
 
+  const [dbSizes, setDbSizes] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    fetch("/api/settings/sizes")
+      .then((res) => res.json())
+      .then((d) => {
+        if (d.success) setDbSizes(d.sizes || []);
+      })
+      .catch((err) => console.error("Failed to load sizes:", err));
+  }, []);
+
   // Auto-fill standard reference measurements by default on initial load if not present
   React.useEffect(() => {
     if (!measurements.measurementMode || !measurements.standardSize) {
@@ -112,6 +123,35 @@ export function GarmentSizeSelector({ measurements, onChange }: GarmentSizeSelec
       ...measurements,
       standardSize: size,
       ...autoFilled,
+    });
+  };
+
+  const handleDbSizeSelect = (sz: any) => {
+    let measObj: Record<string, string> = {};
+    try {
+      if (sz.measurementsJson) measObj = JSON.parse(sz.measurementsJson);
+    } catch (e) {}
+
+    const parsedMeasurements: Record<string, number | undefined> = {};
+    Object.entries(measObj).forEach(([k, v]) => {
+      const numVal = parseFloat(v);
+      const keyLower = k.toLowerCase().replace(/\s+/g, '');
+      
+      if (keyLower === 'bust' || keyLower === 'chest') parsedMeasurements.chest = numVal;
+      else if (keyLower === 'underbust') parsedMeasurements.underBust = numVal;
+      else if (keyLower === 'waist') parsedMeasurements.waist = numVal;
+      else if (keyLower === 'hip' || keyLower === 'hips') parsedMeasurements.hip = numVal;
+      else if (keyLower === 'shoulder') parsedMeasurements.shoulder = numVal;
+      else if (keyLower === 'armhole') parsedMeasurements.armhole = numVal;
+      else if (keyLower === 'sleeveround') parsedMeasurements.sleeveRound = numVal;
+      else if (keyLower === 'sleeve' || keyLower === 'sleevelength') parsedMeasurements.sleeve = numVal;
+      else if (keyLower === 'blouselength' || keyLower === 'length' || keyLower === 'garmentlength') parsedMeasurements.garmentLength = numVal;
+    });
+
+    onChange({
+      ...measurements,
+      standardSize: sz.code,
+      ...parsedMeasurements,
     });
   };
 
@@ -278,24 +318,53 @@ export function GarmentSizeSelector({ measurements, onChange }: GarmentSizeSelec
               </div>
 
               <div className="flex flex-wrap gap-1.5 bg-white dark:bg-zinc-900 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                {config.availableSizes.map((s) => {
-                  const isSelected = (measurements.standardSize || config.availableSizes[0]) === s;
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => handleSizeSelect(s)}
-                      className={`h-8 px-3 rounded-md text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
-                        isSelected
-                          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm"
-                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                      }`}
-                    >
-                      {isSelected && <Check className="h-3 w-3" />}
-                      <span>{s}</span>
-                    </button>
-                  );
-                })}
+                {(() => {
+                  const isBlouseItem = garmentType.toLowerCase().includes('blouse') || (measurements.customGarmentName || '').toLowerCase().includes('blouse');
+                  const filteredDbSizes = dbSizes.filter((sz) => {
+                    const isBlouseSize = sz.code.toLowerCase().includes('blouse') || sz.name.toLowerCase().includes('blouse') || /^\d+$/.test(sz.code);
+                    return isBlouseItem ? isBlouseSize : !isBlouseSize;
+                  });
+
+                  if (filteredDbSizes.length > 0) {
+                    return filteredDbSizes.map((sz) => {
+                      const isSelected = (measurements.standardSize || '') === sz.code;
+                      return (
+                        <button
+                          key={sz.id}
+                          type="button"
+                          onClick={() => handleDbSizeSelect(sz)}
+                          className={`h-8 px-3 rounded-md text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
+                            isSelected
+                              ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm"
+                              : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                          }`}
+                        >
+                          {isSelected && <Check className="h-3 w-3" />}
+                          <span>{sz.code.replace(/^blouse\s+/i, '')}</span>
+                        </button>
+                      );
+                    });
+                  }
+
+                  return config.availableSizes.map((s) => {
+                    const isSelected = (measurements.standardSize || config.availableSizes[0]) === s;
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => handleSizeSelect(s)}
+                        className={`h-8 px-3 rounded-md text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1 ${
+                          isSelected
+                            ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm"
+                            : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3 w-3" />}
+                        <span>{s}</span>
+                      </button>
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}

@@ -11,6 +11,67 @@ interface CloudinaryUploadProps {
   maxFiles?: number;
 }
 
+const compressImage = (file: File): Promise<File | Blob> => {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith('image/')) {
+      resolve(file);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const MAX_WIDTH = 2000;
+        const MAX_HEIGHT = 2000;
+
+        if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+          if (width > height) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          } else {
+            width = Math.round((width * MAX_HEIGHT) / height);
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile.size < file.size ? compressedFile : file);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          0.82
+        );
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+};
+
 export const CloudinaryUpload: React.FC<CloudinaryUploadProps> = ({
   label,
   description,
@@ -37,8 +98,9 @@ export const CloudinaryUpload: React.FC<CloudinaryUploadProps> = ({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        const compressed = await compressImage(file);
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', compressed);
         formData.append('upload_preset', uploadPreset);
 
         const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {

@@ -62,7 +62,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, category, baseStitchingCost, materialRequiredSpecs, materials } = body;
+    const { name, category, baseStitchingCost, materialRequiredSpecs, materials, referenceImages } = body;
 
     if (!name) {
       return NextResponse.json({ success: false, error: 'Outfit style name is required.' }, { status: 400 });
@@ -75,10 +75,57 @@ export async function POST(request: Request) {
         baseStitchingCost: parseFloat(baseStitchingCost) || 500,
         materialRequiredSpecs: materialRequiredSpecs || null,
         materialsJson: materials ? JSON.stringify(materials) : null,
+        referenceImages: referenceImages ? JSON.stringify(referenceImages) : null,
       },
     });
 
     return NextResponse.json({ success: true, style }, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, name, category, baseStitchingCost, materialRequiredSpecs, materials, referenceImages } = body;
+
+    if (!id || !name) {
+      return NextResponse.json({ success: false, error: 'ID and Name are required.' }, { status: 400 });
+    }
+
+    const updated = await db.outfitStyle.update({
+      where: { id },
+      data: {
+        name,
+        category: category || 'Ethnic Wear',
+        baseStitchingCost: parseFloat(baseStitchingCost) || 500,
+        materialRequiredSpecs: materialRequiredSpecs || null,
+        materialsJson: materials ? JSON.stringify(materials) : null,
+        referenceImages: referenceImages ? JSON.stringify(referenceImages) : null,
+      },
+    });
+
+    return NextResponse.json({ success: true, style: updated });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Outfit style ID is required.' }, { status: 400 });
+    }
+
+    await db.outfitStyle.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true, message: 'Outfit style deleted successfully.' });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

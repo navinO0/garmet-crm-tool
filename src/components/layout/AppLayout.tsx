@@ -367,11 +367,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-zinc-900"></span>
               )}
             </Button>
-
-            <Avatar className="h-7 w-7 sm:h-9 sm:w-9 border border-zinc-200 dark:border-zinc-850">
-              <AvatarImage src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256" alt="Avatar" />
-              <AvatarFallback>AD</AvatarFallback>
-            </Avatar>
           </div>
         </header>
 

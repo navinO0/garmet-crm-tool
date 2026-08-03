@@ -411,26 +411,49 @@ function DashboardContent() {
             <div className="space-y-3 sm:space-y-6">
               {/* Compact Stepper Progress Bar */}
               <div className="bg-white dark:bg-zinc-900 p-2.5 sm:p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center justify-between gap-3">
-                <div className="flex justify-between items-center max-w-2xl flex-1 mx-auto">
+                <div className="flex justify-between items-center max-w-3xl flex-1 mx-auto">
+                  {/* Step 1: Client */}
                   <div className={`flex items-center gap-1.5 ${currentStep >= 1 ? 'text-zinc-900 dark:text-zinc-100 font-bold' : 'text-zinc-400'}`}>
                     <div className={`w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs ${currentStep >= 1 ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
                       1
                     </div>
-                    <span className="text-[11px] sm:text-xs">Client</span>
+                    <span className={`text-[11px] sm:text-xs ${currentStep === 1 ? 'inline font-bold' : 'hidden sm:inline'}`}>Client</span>
                   </div>
-                  <div className={`h-0.5 flex-1 mx-1.5 sm:mx-3 ${currentStep >= 2 ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-800'}`} />
+                  <div className={`h-0.5 flex-1 mx-1 sm:mx-2 ${currentStep >= 2 ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-800'}`} />
+
+                  {/* Step 2: Garments */}
                   <div className={`flex items-center gap-1.5 ${currentStep >= 2 ? 'text-zinc-900 dark:text-zinc-100 font-bold' : 'text-zinc-400'}`}>
                     <div className={`w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs ${currentStep >= 2 ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
                       2
                     </div>
-                    <span className="text-[11px] sm:text-xs">Specs</span>
+                    <span className={`text-[11px] sm:text-xs ${currentStep === 2 ? 'inline font-bold' : 'hidden sm:inline'}`}>Garments</span>
                   </div>
-                  <div className={`h-0.5 flex-1 mx-1.5 sm:mx-3 ${currentStep >= 3 ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-800'}`} />
+                  <div className={`h-0.5 flex-1 mx-1 sm:mx-2 ${currentStep >= 3 ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-800'}`} />
+
+                  {/* Step 3: Materials */}
                   <div className={`flex items-center gap-1.5 ${currentStep >= 3 ? 'text-zinc-900 dark:text-zinc-100 font-bold' : 'text-zinc-400'}`}>
                     <div className={`w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs ${currentStep >= 3 ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
                       3
                     </div>
-                    <span className="text-[11px] sm:text-xs">Agreement</span>
+                    <span className={`text-[11px] sm:text-xs ${currentStep === 3 ? 'inline font-bold' : 'hidden sm:inline'}`}>Materials</span>
+                  </div>
+                  <div className={`h-0.5 flex-1 mx-1 sm:mx-2 ${currentStep >= 4 ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-800'}`} />
+
+                  {/* Step 4: Billing */}
+                  <div className={`flex items-center gap-1.5 ${currentStep >= 4 ? 'text-zinc-900 dark:text-zinc-100 font-bold' : 'text-zinc-400'}`}>
+                    <div className={`w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs ${currentStep >= 4 ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
+                      4
+                    </div>
+                    <span className={`text-[11px] sm:text-xs ${currentStep === 4 ? 'inline font-bold' : 'hidden sm:inline'}`}>Billing</span>
+                  </div>
+                  <div className={`h-0.5 flex-1 mx-1 sm:mx-2 ${currentStep >= 5 ? 'bg-zinc-900 dark:bg-zinc-100' : 'bg-zinc-200 dark:bg-zinc-800'}`} />
+
+                  {/* Step 5: Agreement */}
+                  <div className={`flex items-center gap-1.5 ${currentStep >= 5 ? 'text-zinc-900 dark:text-zinc-100 font-bold' : 'text-zinc-400'}`}>
+                    <div className={`w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs ${currentStep >= 5 ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
+                      5
+                    </div>
+                    <span className={`text-[11px] sm:text-xs ${currentStep === 5 ? 'inline font-bold' : 'hidden sm:inline'}`}>Agreement</span>
                   </div>
                 </div>
 
@@ -457,13 +480,23 @@ function DashboardContent() {
                 <ClientForm data={clientData} onChange={(u) => setClientData((prev) => ({ ...prev, ...u }))} errors={clientErrors} />
               )}
 
-              {/* Form Step 2: Order Specifications */}
+              {/* Form Step 2: Garment Specifications */}
               {currentStep === 2 && (
-                <BulkOrderForm data={orderData} onChange={(u) => setOrderData((prev) => ({ ...prev, ...u }))} />
+                <BulkOrderForm data={orderData} step={2} onChange={(u) => setOrderData((prev) => ({ ...prev, ...u }))} />
               )}
 
-              {/* Form Step 3: Agreement & Signatures */}
+              {/* Form Step 3: Materials & Sourcing */}
               {currentStep === 3 && (
+                <BulkOrderForm data={orderData} step={3} onChange={(u) => setOrderData((prev) => ({ ...prev, ...u }))} />
+              )}
+
+              {/* Form Step 4: Logistics & Billing Summary */}
+              {currentStep === 4 && (
+                <BulkOrderForm data={orderData} step={4} onChange={(u) => setOrderData((prev) => ({ ...prev, ...u }))} />
+              )}
+
+              {/* Form Step 5: Agreement & Signatures */}
+              {currentStep === 5 && (
                 <AgreementSignatureSection
                   data={agreementData}
                   clientNameDefault={clientData.clientName}
@@ -487,7 +520,7 @@ function DashboardContent() {
                   <div />
                 )}
 
-                {currentStep < 3 ? (
+                {currentStep < 5 ? (
                   <button
                     type="button"
                     onClick={handleNextStep}

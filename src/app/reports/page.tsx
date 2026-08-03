@@ -302,7 +302,7 @@ export default function ReportsPage() {
                       contentStyle={{
                         backgroundColor: "var(--card)",
                         borderColor: "var(--border)",
-                        borderRadius: "6px",
+                        borderRadius: "0px",
                       }}
                     />
                     <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: "11px" }} />
@@ -347,10 +347,10 @@ export default function ReportsPage() {
                         contentStyle={{
                           backgroundColor: "var(--card)",
                           borderColor: "var(--border)",
-                          borderRadius: "6px",
+                          borderRadius: "0px",
                         }}
                       />
-                      <Bar dataKey="Orders" fill="#18181b" radius={[4, 4, 0, 0]} className="dark:fill-zinc-300">
+                      <Bar dataKey="Orders" fill="#18181b" radius={0} className="dark:fill-zinc-300">
                         {orderProductData.ordersTrendChart.map((entry, idx) => (
                           <Cell key={`cell-${idx}`} fill={idx === orderProductData.ordersTrendChart.length - 1 ? "#3b82f6" : "var(--foreground)"} />
                         ))}
@@ -387,7 +387,7 @@ export default function ReportsPage() {
                             contentStyle={{
                               backgroundColor: "var(--card)",
                               borderColor: "var(--border)",
-                              borderRadius: "6px",
+                              borderRadius: "0px",
                             }}
                           />
                         </PieChart>
@@ -448,7 +448,7 @@ export default function ReportsPage() {
                       contentStyle={{
                         backgroundColor: "var(--card)",
                         borderColor: "var(--border)",
-                        borderRadius: "6px",
+                        borderRadius: "0px",
                       }}
                     />
                     <Line
@@ -503,11 +503,11 @@ export default function ReportsPage() {
                       contentStyle={{
                         backgroundColor: "var(--card)",
                         borderColor: "var(--border)",
-                        borderRadius: "6px",
+                        borderRadius: "0px",
                       }}
                       formatter={(val) => [`${val} Days`, "Avg Duration"]}
                     />
-                    <Bar dataKey="Days" fill="var(--foreground)" radius={[0, 4, 4, 0]} maxBarSize={30}>
+                    <Bar dataKey="Days" fill="var(--foreground)" radius={0} maxBarSize={30}>
                       {productionDurationChart.map((entry, idx) => (
                         <Cell key={`cell-${idx}`} fill={entry.Days > 4 ? "#ef4444" : entry.Days > 2 ? "#eab308" : "var(--foreground)"} />
                       ))}

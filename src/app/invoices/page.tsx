@@ -155,13 +155,17 @@ function InvoicesContent() {
           totalPrice: p.price * p.quantity,
           fabricDetails: (p as any).fabricDetails || p.notes,
         })),
-        subtotal: invoiceOrder.estimate.subtotal || invoiceOrder.estimate.total,
-        shippingCharges: invoiceOrder.estimate.shipping || 0,
-        packingCharges: invoiceOrder.estimate.tax || 0,
+        subtotal: invoiceOrder.estimate.stitching || invoiceOrder.estimate.subtotal || invoiceOrder.estimate.total,
+        laborPrintingCharges: (invoiceOrder.estimate.embroidery || 0) + (invoiceOrder.estimate.printing || 0),
+        shippingCharges: invoiceOrder.estimate.shipping || invoiceOrder.estimate.transport || 0,
+        packingCharges: invoiceOrder.estimate.tax || invoiceOrder.estimate.packing || 0,
+        gstAmount: invoiceOrder.estimate.gst || 0,
+        discountAmount: invoiceOrder.estimate.discount || 0,
         totalAmount: invoiceOrder.estimate.total,
         advancePaid: totalPaid,
         balanceDue,
         invoiceDate: new Date(invoiceOrder.createdAt).toLocaleDateString(),
+        isBoutique: !!invoiceOrder.measurements && (!!invoiceOrder.measurements.chest || !!invoiceOrder.measurements.waist || !!invoiceOrder.measurements.standardSize),
       });
 
       const sizeChartHtml = generateSizeChartHTML({

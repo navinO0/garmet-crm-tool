@@ -82,3 +82,46 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, name, code, measurements } = body;
+
+    if (!id || !name || !code) {
+      return NextResponse.json({ success: false, error: 'ID, Size Name and Size Code are required.' }, { status: 400 });
+    }
+
+    const updated = await db.customSize.update({
+      where: { id },
+      data: {
+        name,
+        code: code.toUpperCase(),
+        measurementsJson: measurements ? JSON.stringify(measurements) : null,
+      },
+    });
+
+    return NextResponse.json({ success: true, size: updated });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Size ID is required.' }, { status: 400 });
+    }
+
+    await db.customSize.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true, message: 'Size deleted successfully.' });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
