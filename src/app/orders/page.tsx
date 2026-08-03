@@ -159,7 +159,6 @@ function OrdersContent() {
 
   const handleCloseDetails = () => {
     setSelectedOrderId(null);
-    setActiveTab("overview");
     router.replace("/orders");
   };
 

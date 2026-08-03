@@ -780,7 +780,7 @@ export default function NewOrder() {
       );
       if (input) {
         input.focus();
-        if (input.tagName === "INPUT" && typeof input.select === "function") {
+        if (input instanceof HTMLInputElement) {
           input.select();
         }
       }
