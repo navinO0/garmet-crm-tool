@@ -183,7 +183,7 @@ export const AgreementSignatureSection: React.FC<AgreementSignatureSectionProps>
       clientDesignation: data.clientDesignation || 'Proprietor',
       clientSignature: data.clientSignature || '',
       clientSignedDate: doc.currentDate,
-      companySignatoryName: settings.companySignatoryName || 'RAADHE LABEL by RADHE VASTRAZ',
+      companySignatoryName: settings.companySignatoryName || 'RAADHE LABEL part of RADHE VASTRAZ',
       companyDesignation: settings.companyDesignation || 'Authorized Signatory & Managing Director',
       companySignature: settings.companySignature || 'Digitally Signed by RAADHE LABEL',
       companySignedDate: doc.currentDate,
@@ -257,7 +257,7 @@ export const AgreementSignatureSection: React.FC<AgreementSignatureSectionProps>
       clientDesignation: data.clientDesignation || 'Proprietor',
       clientSignature: data.clientSignature || '',
       clientSignedDate: doc.currentDate,
-      companySignatoryName: settings.companySignatoryName || 'RAADHE LABEL by RADHE VASTRAZ',
+      companySignatoryName: settings.companySignatoryName || 'RAADHE LABEL part of RADHE VASTRAZ',
       companyDesignation: settings.companyDesignation || 'Authorized Signatory & Managing Director',
       companySignature: settings.companySignature || 'Digitally Signed by RAADHE LABEL',
       companySignedDate: doc.currentDate,
@@ -353,7 +353,7 @@ export const AgreementSignatureSection: React.FC<AgreementSignatureSectionProps>
           <div className="flex items-center gap-1.5">
             <FileText className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
             <h3 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
-              RAADHE LABEL by RADHE VASTRAZ
+              RAADHE LABEL part of RADHE VASTRAZ
             </h3>
           </div>
           <p className="text-[11px] sm:text-xs font-bold text-zinc-700 dark:text-zinc-300 mt-0.5">
@@ -474,7 +474,7 @@ export const AgreementSignatureSection: React.FC<AgreementSignatureSectionProps>
             </div>
             <div className="flex justify-between">
               <span>Digital Signature:</span>
-              <strong className="text-emerald-600 italic">{data.clientSignature ? 'Signed ✓' : 'Required *'}</strong>
+              <strong className="text-zinc-500 italic">{data.clientSignature ? 'Signed ✓' : 'Optional (For Reference)'}</strong>
             </div>
             <div className="flex justify-between">
               <span>Agreement Clauses:</span>
@@ -558,7 +558,7 @@ export const AgreementSignatureSection: React.FC<AgreementSignatureSectionProps>
             </span>
             <div>
               <label className="block text-[10px] text-zinc-500">Brand / Company</label>
-              <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">RAADHE LABEL by RADHE VASTRAZ</p>
+              <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">RAADHE LABEL part of RADHE VASTRAZ</p>
             </div>
             <div>
               <label className="block text-[10px] text-zinc-500">Designation</label>
@@ -578,7 +578,6 @@ export const AgreementSignatureSection: React.FC<AgreementSignatureSectionProps>
               <label className="block text-[10px] font-medium text-zinc-700 dark:text-zinc-300 mb-0.5">Signatory Name *</label>
               <input
                 type="text"
-                required
                 placeholder={clientNameDefault || 'e.g. Radhika Sharma'}
                 value={data.clientSignatoryName}
                 onChange={(e) => onChange({ clientSignatoryName: e.target.value })}
@@ -596,11 +595,10 @@ export const AgreementSignatureSection: React.FC<AgreementSignatureSectionProps>
               />
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-zinc-700 dark:text-zinc-300 mb-0.5">Digital Signature / Legal Full Name *</label>
+              <label className="block text-[10px] font-medium text-zinc-700 dark:text-zinc-300 mb-0.5">Digital Signature / Legal Full Name (Optional for Reference)</label>
               <input
                 type="text"
-                required
-                placeholder="Type full legal name to sign digitally"
+                placeholder="Type full legal name to sign digitally (Optional)"
                 value={data.clientSignature}
                 onChange={(e) => onChange({ clientSignature: e.target.value })}
                 className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded text-xs font-serif italic text-zinc-900 dark:text-zinc-100 focus:outline-none"

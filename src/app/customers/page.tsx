@@ -9,6 +9,7 @@ import { useProductionStore } from "@/store/productionStore";
 import { MeasurementCard, StatusBadge, EmptyState } from "@/components/shared/ReusableComponents";
 import { Customer, Measurements, SizeSet } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { BulkOrderDetailModal } from "@/components/bulk/BulkOrderDetailModal";
 import {
   Search,
   Plus,
@@ -24,6 +25,11 @@ import {
   ShoppingBag,
   SlidersHorizontal,
   ChevronRight,
+  Scissors,
+  HardDrive,
+  Loader2,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,8 +96,36 @@ function CustomersContent() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [customersTab, setCustomersTab] = useState<'boutique' | 'bulk'>('boutique');
+  const [bulkClients, setBulkClients] = useState<any[]>([]);
+  const [isLoadingClients, setIsLoadingClients] = useState<boolean>(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Bulk client detail state
+  const [selectedBulkClient, setSelectedBulkClient] = useState<any | null>(null);
+  const [clientOrders, setClientOrders] = useState<any[]>([]);
+  const [isLoadingClientOrders, setIsLoadingClientOrders] = useState(false);
+  const [selectedBulkOrder, setSelectedBulkOrder] = useState<any | null>(null);
+
+  const fetchClientOrders = async (clientId: string) => {
+    try {
+      setIsLoadingClientOrders(true);
+      const res = await fetch(`/api/bulk-orders?clientId=${clientId}`);
+      const data = await res.json();
+      if (data.success) setClientOrders(data.orders || []);
+    } catch (e) {
+      console.error('Failed to fetch client orders:', e);
+    } finally {
+      setIsLoadingClientOrders(false);
+    }
+  };
+
+  const handleSelectBulkClient = (client: any) => {
+    setSelectedBulkClient(client);
+    setClientOrders([]);
+    fetchClientOrders(client.id);
+  };
   const [customFields, setCustomFields] = useState<Array<{ key: string; value: string }>>([]);
 
   // Size Set Form State
@@ -130,6 +164,39 @@ function CustomersContent() {
         (c.company && c.company.toLowerCase().includes(q))
     );
   }, [customers, searchQuery]);
+
+  const fetchBulkClients = async () => {
+    try {
+      setIsLoadingClients(true);
+      const res = await fetch('/api/clients');
+      const data = await res.json();
+      if (data.success) {
+        setBulkClients(data.clients || []);
+      }
+    } catch (e) {
+      console.error('Failed to fetch bulk clients:', e);
+    } finally {
+      setIsLoadingClients(false);
+    }
+  };
+
+  useEffect(() => {
+    if (customersTab === 'bulk') {
+      fetchBulkClients();
+    }
+  }, [customersTab]);
+
+  const filteredBulkClients = useMemo(() => {
+    if (!searchQuery.trim()) return bulkClients;
+    const q = searchQuery.toLowerCase();
+    return bulkClients.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.email && c.email.toLowerCase().includes(q)) ||
+        c.mobileNumber.includes(q) ||
+        (c.businessName && c.businessName.toLowerCase().includes(q))
+    );
+  }, [bulkClients, searchQuery]);
 
   const selectedCustomer = useMemo(() => {
     return customers.find((c) => c.id === selectedCustomerId) || null;
@@ -386,10 +453,38 @@ function CustomersContent() {
           <h1 className="text-3xl font-extrabold tracking-tight">Customers</h1>
           <p className="text-sm text-zinc-500 mt-1">Manage profiles, measurement records, and history.</p>
         </div>
-        <Button onClick={handleOpenAddForm} className="font-semibold tracking-tight cursor-pointer">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Customer
-        </Button>
+        {customersTab === 'boutique' && (
+          <Button onClick={handleOpenAddForm} className="font-semibold tracking-tight cursor-pointer">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Customer
+          </Button>
+        )}
+      </div>
+
+      {/* Tab Switcher */}
+      <div className="flex gap-2 p-1 bg-zinc-150 dark:bg-zinc-950/60 rounded-lg w-max border border-zinc-200 dark:border-zinc-800 animate-in fade-in duration-100">
+        <button
+          onClick={() => setCustomersTab('boutique')}
+          className={`py-1.5 px-4 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
+            customersTab === 'boutique'
+              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm font-bold'
+              : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+          }`}
+        >
+          <Scissors className="w-3.5 h-3.5" />
+          Boutique Customers
+        </button>
+        <button
+          onClick={() => setCustomersTab('bulk')}
+          className={`py-1.5 px-4 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
+            customersTab === 'bulk'
+              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm font-bold'
+              : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+          }`}
+        >
+          <HardDrive className="w-3.5 h-3.5" />
+          Bulk Stitching Clients
+        </button>
       </div>
 
       {/* Control bar: Search and filter */}
@@ -407,17 +502,18 @@ function CustomersContent() {
       </div>
 
       {/* Customer List Section */}
-      {filteredCustomers.length === 0 ? (
-        <EmptyState
-          title="No Customers Found"
-          description={searchQuery ? "Try refining your search terms." : "Add your first customer to get started."}
-          actionText={!searchQuery ? "Add Customer" : undefined}
-          onAction={!searchQuery ? handleOpenAddForm : undefined}
-        />
-      ) : (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden">
-          {/* Desktop Table View (Hidden on Mobile) */}
-          <div className="hidden md:block">
+      {customersTab === 'boutique' ? (
+        filteredCustomers.length === 0 ? (
+          <EmptyState
+            title="No Customers Found"
+            description={searchQuery ? "Try refining your search terms." : "Add your first customer to get started."}
+            actionText={!searchQuery ? "Add Customer" : undefined}
+            onAction={!searchQuery ? handleOpenAddForm : undefined}
+          />
+        ) : (
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden animate-in fade-in duration-100">
+            {/* Desktop Table View (Hidden on Mobile) */}
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -504,6 +600,84 @@ function CustomersContent() {
             ))}
           </div>
         </div>
+      )
+    ) : (
+        /* Bulk Stitching Clients Tab */
+        isLoadingClients ? (
+          <div className="text-center py-12 text-zinc-500 flex items-center justify-center gap-1.5 text-xs">
+            <Loader2 className="w-4 h-4 animate-spin text-zinc-400" /> Loading bulk clients...
+          </div>
+        ) : filteredBulkClients.length === 0 ? (
+          <EmptyState
+            title="No Bulk Clients Found"
+            description={searchQuery ? "Try adjusting your search query." : "Registered clients will appear here once bulk orders are generated."}
+          />
+        ) : (
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden animate-in fade-in duration-100">
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-bold text-zinc-500">Client Name</TableHead>
+                    <TableHead className="font-bold text-zinc-500">Business / Company</TableHead>
+                    <TableHead className="font-bold text-zinc-500">Mobile Number</TableHead>
+                    <TableHead className="font-bold text-zinc-500">Email Address</TableHead>
+                    <TableHead className="font-bold text-zinc-500">Billing Address</TableHead>
+                    <TableHead className="font-bold text-zinc-500 text-center">Bulk Jobs</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredBulkClients.map((client) => (
+                    <TableRow
+                      key={client.id}
+                      className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 cursor-pointer"
+                      onClick={() => handleSelectBulkClient(client)}
+                    >
+                      <TableCell className="font-bold text-xs text-zinc-900 dark:text-zinc-100 py-3.5">
+                        {client.name}
+                      </TableCell>
+                      <TableCell className="text-xs text-zinc-800 dark:text-zinc-200 font-semibold py-3.5">
+                        {client.businessName || '—'}
+                      </TableCell>
+                      <TableCell className="text-xs py-3.5 font-medium">{client.mobileNumber}</TableCell>
+                      <TableCell className="text-xs text-zinc-500 py-3.5">{client.email || '—'}</TableCell>
+                      <TableCell className="text-xs text-zinc-500 max-w-[200px] truncate py-3.5">{client.address || '—'}</TableCell>
+                      <TableCell className="text-xs text-center font-bold py-3.5">
+                        <span className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
+                          {client._count?.bulkOrders || 0} orders <ChevronRight className="w-3 h-3" />
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="block md:hidden divide-y divide-zinc-100 dark:divide-zinc-800/80">
+              {filteredBulkClients.map((client) => (
+                <div
+                  key={client.id}
+                  className="p-4 space-y-2 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-850 active:bg-zinc-100 dark:active:bg-zinc-800 transition"
+                  onClick={() => handleSelectBulkClient(client)}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-bold text-sm text-zinc-900 dark:text-zinc-50">{client.name}</p>
+                      <p className="text-xs text-zinc-500 font-semibold">{client.businessName || 'Direct Client'}</p>
+                    </div>
+                    <span className="text-[10px] bg-indigo-50 text-indigo-600 dark:bg-indigo-950/20 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50 px-2 py-0.5 rounded font-bold flex items-center gap-1">
+                      {client._count?.bulkOrders || 0} Jobs <ChevronRight className="w-3 h-3" />
+                    </span>
+                  </div>
+                  <div className="text-xs space-y-1 text-zinc-500">
+                    <p>Phone: {client.mobileNumber}</p>
+                    {client.email && <p>Email: {client.email}</p>}
+                    {client.address && <p className="truncate">Address: {client.address}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
       )}
 
       {/* Customer Detail Side Sheet */}
@@ -1024,6 +1198,100 @@ function CustomersContent() {
           </form>
         </DialogContent>
       </Dialog>
+      {/* Bulk Client Detail Dialog */}
+      <Dialog open={!!selectedBulkClient} onOpenChange={(open) => { if (!open) { setSelectedBulkClient(null); setClientOrders([]); setSelectedBulkOrder(null); } }}>
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col p-0 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl">
+          {selectedBulkClient && (
+            <>
+              {/* Header */}
+              <DialogHeader className="px-6 pt-5 pb-4 border-b border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/30 space-y-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest">Bulk Stitching Client</span>
+                    <DialogTitle className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">
+                      {selectedBulkClient.name}
+                    </DialogTitle>
+                    {selectedBulkClient.businessName && (
+                      <p className="text-xs text-zinc-500 mt-0.5">{selectedBulkClient.businessName}</p>
+                    )}
+                  </div>
+                </div>
+                {/* Contact info row */}
+                <div className="flex flex-wrap gap-4 mt-3 text-xs text-zinc-500">
+                  <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{selectedBulkClient.mobileNumber}</span>
+                  {selectedBulkClient.email && <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" />{selectedBulkClient.email}</span>}
+                  {selectedBulkClient.address && <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{selectedBulkClient.address}</span>}
+                </div>
+              </DialogHeader>
+
+              {/* Orders list */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                <h4 className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5" /> Bulk Stitching Orders
+                </h4>
+
+                {isLoadingClientOrders ? (
+                  <div className="flex items-center justify-center gap-2 py-10 text-xs text-zinc-400">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Loading orders...
+                  </div>
+                ) : clientOrders.length === 0 ? (
+                  <div className="text-center py-10 text-xs text-zinc-400 italic">
+                    No bulk orders found for this client.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {clientOrders.map((order) => {
+                      const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+                      const statusColor =
+                        order.status === 'Completed' || order.status === 'Delivered'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/50'
+                          : order.status === 'Extended'
+                          ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800/50'
+                          : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800/50';
+
+                      return (
+                        <div
+                          key={order.id}
+                          onClick={() => setSelectedBulkOrder(order)}
+                          className="flex items-center justify-between p-3.5 bg-zinc-50 dark:bg-zinc-950/30 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/10 cursor-pointer transition group"
+                        >
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-zinc-900 dark:text-zinc-100">{order.orderNumber}</span>
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${statusColor}`}>{order.status}</span>
+                            </div>
+                            <p className="text-[11px] text-zinc-400">
+                              {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              {' · '}
+                              {order.items?.reduce((s: number, i: any) => s + i.quantity, 0)} pcs
+                              {' · '}
+                              Delivery: {order.estimatedDelivery || 'TBD'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="text-right">
+                              <p className="text-xs font-extrabold text-zinc-900 dark:text-zinc-100">{fmt(order.totalAmount)}</p>
+                              <p className="text-[10px] text-zinc-400">Balance: {fmt(order.remainingAmount)}</p>
+                            </div>
+                            <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-indigo-500 transition" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Order Detail Modal (drill-down from client) */}
+      <BulkOrderDetailModal
+        order={selectedBulkOrder}
+        isOpen={!!selectedBulkOrder}
+        onClose={() => setSelectedBulkOrder(null)}
+      />
     </div>
   );
 }

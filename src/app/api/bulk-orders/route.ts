@@ -4,9 +4,13 @@ import { uploadInvoiceToS3, uploadAgreementToS3 } from '@/lib/s3Storage';
 import { generateInvoiceHTML, generateAgreementHTML } from '@/lib/documentGenerator';
 import { bulkOrderSchema } from '@/lib/validations/schemas';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const clientId = searchParams.get('clientId');
+
     const orders = await db.bulkOrder.findMany({
+      where: clientId ? { clientId } : undefined,
       orderBy: { createdAt: 'desc' },
       include: {
         client: true,
@@ -87,15 +91,28 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-      clientObj = await db.client.create({
-        data: {
-          name: clientName,
-          businessName: businessName || null,
-          mobileNumber,
-          email: email || null,
-          address: address || null,
-        },
-      });
+      const existing = await db.client.findFirst({ where: { mobileNumber } });
+      if (existing) {
+        clientObj = await db.client.update({
+          where: { id: existing.id },
+          data: {
+            name: clientName,
+            businessName: businessName || null,
+            email: email || null,
+            address: address || null,
+          },
+        });
+      } else {
+        clientObj = await db.client.create({
+          data: {
+            name: clientName,
+            businessName: businessName || null,
+            mobileNumber,
+            email: email || null,
+            address: address || null,
+          },
+        });
+      }
       clientRecordId = clientObj.id;
     } else {
       clientObj = await db.client.findUnique({ where: { id: clientRecordId } });
@@ -129,8 +146,8 @@ export async function POST(request: Request) {
         priceBreakupJson: item.customPriceFields
           ? JSON.stringify(item.customPriceFields)
           : item.priceBreakup
-          ? JSON.stringify(item.priceBreakup)
-          : null,
+            ? JSON.stringify(item.priceBreakup)
+            : null,
       };
     });
 
@@ -216,7 +233,7 @@ export async function POST(request: Request) {
       clientDesignation: clientDesignation || 'Client',
       clientSignature: clientSignature || undefined,
       clientSignedDate: currentDateStr,
-      companySignatoryName: 'RAADHE LABEL by RADHE VASTRAZ',
+      companySignatoryName: 'RAADHE LABEL part of RADHE VASTRAZ',
       companyDesignation: 'Authorized Signatory',
       companySignature: undefined,
       companySignedDate: currentDateStr,
@@ -263,7 +280,7 @@ export async function POST(request: Request) {
             clientDesignation: clientDesignation || 'Client',
             clientSignature: clientSignature || null,
             clientSignedDate: currentDateStr,
-            companySignatoryName: 'RAADHE LABEL by RADHE VASTRAZ',
+            companySignatoryName: 'RAADHE LABEL part of RADHE VASTRAZ',
             companyDesignation: 'Authorized Signatory',
             companySignedDate: currentDateStr,
             witnessName: witnessName || null,

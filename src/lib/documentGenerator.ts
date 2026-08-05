@@ -176,7 +176,7 @@ export function generateInvoiceHTML(data: InvoiceDocData): string {
     <div class="header">
       <div>
         <div class="brand-title">${data.isBoutique ? 'RADHE VASTRAZ BOUTIQUE' : 'RAADHE LABEL'}</div>
-        <div class="brand-sub">${data.isBoutique ? 'Bespoke Garments & Custom Tailoring' : 'by RADHE VASTRAZ • Bulk Stitching & Private Label Manufacturing'}</div>
+        <div class="brand-sub">${data.isBoutique ? 'Bespoke Garments & Custom Tailoring' : 'part of RADHE VASTRAZ • Bulk Stitching & Private Label Manufacturing'}</div>
       </div>
       <div>
         <div class="inv-title">INVOICE</div>
@@ -264,7 +264,7 @@ export function generateInvoiceHTML(data: InvoiceDocData): string {
     </div>
 
     <div class="footer">
-      Thank you for doing business with ${data.isBoutique ? 'RADHE VASTRAZ BOUTIQUE' : 'RAADHE LABEL by RADHE VASTRAZ'}.
+      Thank you for doing business with ${data.isBoutique ? 'RADHE VASTRAZ BOUTIQUE' : 'RAADHE LABEL part of RADHE VASTRAZ'}.
     </div>
   </div>
 </body>
@@ -297,7 +297,7 @@ export function generateAgreementHTML(data: AgreementDocData): string {
 </head>
 <body>
   <div class="doc-card">
-    <h1>RAADHE LABEL by RADHE VASTRAZ</h1>
+    <h1>RAADHE LABEL part of RADHE VASTRAZ</h1>
     <h2>BULK STITCHING & PRIVATE LABEL MANUFACTURING AGREEMENT</h2>
 
     <div class="meta-box">
@@ -354,9 +354,8 @@ export function generateAgreementHTML(data: AgreementDocData): string {
       </div>
     </div>
 
-    ${
-      data.witnessName
-        ? `
+    ${data.witnessName
+      ? `
     <div style="margin-top: 20px;">
       <div class="sig-box">
         <div class="sig-title">WITNESS (Optional)</div>
@@ -367,7 +366,7 @@ export function generateAgreementHTML(data: AgreementDocData): string {
       </div>
     </div>
     `
-        : ''
+      : ''
     }
 
     <div class="initials-row">
@@ -440,7 +439,7 @@ export function generateSizeChartHTML(data: SizeChartDocData): string {
   <div class="doc-card">
     <div class="header">
       <div>
-        <div class="brand">RAADHE LABEL by RADHE VASTRAZ</div>
+        <div class="brand">RAADHE LABEL part of RADHE VASTRAZ</div>
         <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Bulk Stitching & Private Label Manufacturing</div>
       </div>
       <div>
@@ -492,18 +491,17 @@ export function generateSizeChartHTML(data: SizeChartDocData): string {
             <th style="padding: 5px 8px; border-bottom: 1.5px solid #cbd5e1; font-weight: 700; color: #334155; text-align: center;">Hip</th>
             <th style="padding: 5px 8px; border-bottom: 1.5px solid #cbd5e1; font-weight: 700; color: #334155; text-align: center;">Shoulder</th>
             <th style="padding: 5px 8px; border-bottom: 1.5px solid #cbd5e1; font-weight: 700; color: #334155; text-align: center;">Armhole</th>
-            <th style="padding: 5px 8px; border-bottom: 1.5px solid #cbd5e1; font-weight: 700; color: #334155; text-align: center;">Std. Length</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">XS (34)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">34"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">28"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">36"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">13.5"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">15"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">44"</td></tr>
-          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">S (36)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">36"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">30"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">38"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">14.0"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">16"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">44"</td></tr>
-          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">M (38)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">38"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">32"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">40"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">14.5"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">17"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">45"</td></tr>
-          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">L (40)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">40"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">34"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">42"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">15.0"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">18"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">45"</td></tr>
-          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">XL (42)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">42"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">36"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">44"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">15.5"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">19"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">46"</td></tr>
-          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">XXL (44)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">44"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">38"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">46"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">16.0"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">20"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">46"</td></tr>
-          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">3XL (46)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">46"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">40"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">48"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">16.5"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">21"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">47"</td></tr>
-          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">4XL (48)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">48"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">42"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">50"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">17.0"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">22"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">47"</td></tr>
+          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">XS (34)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">34"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">28"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">36"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">13.5"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">15"</td></tr>
+          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">S (36)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">36"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">30"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">38"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">14.0"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">16"</td></tr>
+          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">M (38)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">38"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">32"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">40"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">14.5"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">17"</td></tr>
+          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">L (40)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">40"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">34"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">42"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">15.0"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">18"</td></tr>
+          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">XL (42)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">42"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">36"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">44"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">15.5"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">19"</td></tr>
+          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">XXL (44)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">44"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">38"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">46"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">16.0"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">20"</td></tr>
+          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">3XL (46)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">46"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">40"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">48"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">16.5"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">21"</td></tr>
+          <tr><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; font-weight: bold; color: #4f46e5;">4XL (48)</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">48"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">42"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">50"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">17.0"</td><td style="padding: 4px 8px; border-bottom: 1px solid #f1f5f9; text-align: center;">22"</td></tr>
         </tbody>
       </table>
     </div>
@@ -517,7 +515,7 @@ export function generateSizeChartHTML(data: SizeChartDocData): string {
     </div>
 
     <div class="footer">
-      RAADHE LABEL by RADHE VASTRAZ • Official Size Guide & Client Awareness Specification
+      RAADHE LABEL part of RADHE VASTRAZ • Official Size Guide & Client Awareness Specification
     </div>
   </div>
 </body>

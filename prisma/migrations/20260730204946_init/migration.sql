@@ -55,7 +55,7 @@ CREATE TABLE "Agreement" (
     "clientDesignation" TEXT,
     "clientSignature" TEXT,
     "clientSignedDate" TEXT,
-    "companySignatoryName" TEXT NOT NULL DEFAULT 'RAADHE LABEL by RADHE VASTRAZ',
+    "companySignatoryName" TEXT NOT NULL DEFAULT 'RAADHE LABEL part of RADHE VASTRAZ',
     "companyDesignation" TEXT DEFAULT 'Authorized Signatory',
     "companySignature" TEXT,
     "companySignedDate" TEXT,

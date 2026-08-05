@@ -11,7 +11,7 @@ model Client {
   id           String      @id @default(uuid())
   name         String
   businessName String?
-  mobileNumber String
+  mobileNumber String  @unique
   email        String?
   address      String?
   createdAt    DateTime    @default(now())
@@ -80,7 +80,7 @@ model Agreement {
   clientDesignation     String?
   clientSignature       String?
   clientSignedDate      String?
-  companySignatoryName  String    @default("RAADHE LABEL by RADHE VASTRAZ")
+  companySignatoryName  String    @default("RAADHE LABEL part of RADHE VASTRAZ")
   companyDesignation    String?   @default("Authorized Signatory")
   companySignature      String?
   companySignedDate     String?
@@ -131,16 +131,18 @@ model BoutiqueOrder {
 }
 
 model OutfitStyle {
-  id                    String   @id @default(uuid())
-  name                  String   @unique
-  category              String   @default("Ethnic Wear")
-  baseStitchingCost     Float    @default(500)
-  materialRequiredSpecs String?
-  materialsJson         String?  // JSON array of itemized material requirements per piece
-  description           String?
-  referenceImages       String?  // JSON array of reference image URLs for this style
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                        String   @id @default(uuid())
+  name                      String   @unique
+  category                  String   @default("Ethnic Wear")
+  baseStitchingCost         Float    @default(500)
+  boutiqueBaseStitchingCost Float    @default(500)
+  bulkBaseStitchingCost     Float    @default(500)
+  materialRequiredSpecs     String?
+  materialsJson             String?  // JSON array of itemized material requirements per piece
+  description               String?
+  referenceImages           String?  // JSON array of reference image URLs for this style
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 }
 
 model CustomSize {

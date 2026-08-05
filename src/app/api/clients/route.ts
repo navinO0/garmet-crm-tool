@@ -36,15 +36,29 @@ export async function POST(request: Request) {
 
     const { name, businessName, mobileNumber, email, address } = validation.data;
 
-    const client = await db.client.create({
-      data: {
-        name,
-        businessName: businessName || null,
-        mobileNumber,
-        email: email || null,
-        address: address || null,
-      },
-    });
+    const existingClient = await db.client.findFirst({ where: { mobileNumber } });
+    let client;
+    if (existingClient) {
+      client = await db.client.update({
+        where: { id: existingClient.id },
+        data: {
+          name,
+          businessName: businessName || null,
+          email: email || null,
+          address: address || null,
+        },
+      });
+    } else {
+      client = await db.client.create({
+        data: {
+          name,
+          businessName: businessName || null,
+          mobileNumber,
+          email: email || null,
+          address: address || null,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, client }, { status: 201 });
   } catch (error: any) {

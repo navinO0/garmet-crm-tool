@@ -90,20 +90,21 @@ export const OrderLifecycleModal: React.FC<OrderLifecycleModalProps> = ({
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-xs font-semibold"
+            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500/20"
           >
             <option value="Estimate Generated">Estimate Generated</option>
             <option value="Estimate Approved">Estimate Approved</option>
             <option value="Work Started">Agreement Signed / Work Started</option>
             <option value="In Production">In Production / Cutting & Stitching</option>
-            <option value="Completed">Completed (Upload Output Pictures & Leftover Notes)</option>
+            <option value="Completed">Completed (Ready for Dispatch)</option>
+            <option value="Delivered">Delivered (Upload Output Pictures & Leftover Notes)</option>
             <option value="Extended">Extended (Extend Delivery Date)</option>
           </select>
         </div>
 
         {/* Completion Fields: Output Photos & Leftover Notes */}
-        {status === 'Completed' && (
-          <div className="space-y-4 p-4 bg-emerald-50/60 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800">
+        {(status === 'Completed' || status === 'Delivered') && (
+          <div className="space-y-4 p-4 bg-emerald-50/60 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 animate-in slide-in-from-top-1 duration-150">
             <CloudinaryUpload
               label="Finished Garment Output Pictures"
               description="Upload photos of final stitched garments before dispatch."
@@ -120,7 +121,7 @@ export const OrderLifecycleModal: React.FC<OrderLifecycleModalProps> = ({
                 placeholder="e.g. 2.5 meters leftover velvet fabric and 1 bundle lining returned to client."
                 value={leftoverNotes}
                 onChange={(e) => setLeftoverNotes(e.target.value)}
-                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-xs"
+                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               />
             </div>
           </div>

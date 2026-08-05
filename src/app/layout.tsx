@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ThemeWatcher } from "@/components/layout/ThemeWatcher";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,6 +46,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ThemeWatcher />
         <AppLayout>{children}</AppLayout>
+        <Toaster richColors position="top-right" swipeDirections={['top', 'right', 'bottom', 'left']} />
       </body>
     </html>
   );

@@ -684,7 +684,7 @@ const defaultSettings: CompanySettings = {
   supportEmail: "raadhelabel@gmail.com",
   logoUrl: "",
   companySignature: "",
-  companySignatoryName: "RAADHE LABEL by RADHE VASTRAZ",
+  companySignatoryName: "RAADHE LABEL part of RADHE VASTRAZ",
   companyDesignation: "Authorized Signatory & Managing Director",
   invoicePrefix: "RADHE",
   gstRate: 18,
@@ -985,7 +985,7 @@ export const useProductionStore = create<ProductionStore>()((set, get) => ({
             while (remaining > 0) {
               const qtyThisBundle = Math.min(remaining, bundleSize);
               const bdlNumber = `BDL-${order.orderNumber.replace("ORD-", "")}-${entry.size}${subIdx}`;
-              
+
               newBundles.push({
                 id: `bdl-${Date.now()}-${bundleCounter}`,
                 bundleNumber: bdlNumber,

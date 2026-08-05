@@ -520,7 +520,7 @@ export default function NewOrder() {
       updated[index] = {
         ...updated[index],
         product: selected.name,
-        price: selected.baseStitchingCost || 0,
+        price: selected.boutiqueBaseStitchingCost || selected.baseStitchingCost || 0,
         // @ts-ignore
         outfitStyleId: selected.id
       };
@@ -1202,7 +1202,7 @@ export default function NewOrder() {
                           <option value="">Custom Outfit</option>
                           {outfitStyles.map((style) => (
                             <option key={style.id} value={style.id}>
-                              {style.name} (₹{style.baseStitchingCost})
+                              {style.name} (₹{style.boutiqueBaseStitchingCost || style.baseStitchingCost || 0})
                             </option>
                           ))}
                         </select>

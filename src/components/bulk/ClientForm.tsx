@@ -1,10 +1,11 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Building, Phone, Mail, MapPin } from 'lucide-react';
 import { clientSchema } from '@/lib/validations/schemas';
 
 export interface ClientData {
+  clientId?: string;
   clientName: string;
   businessName: string;
   mobileNumber: string;
@@ -16,13 +17,79 @@ interface ClientFormProps {
   data: ClientData;
   onChange: (updated: Partial<ClientData>) => void;
   errors?: Record<string, string>;
+  clientsList?: any[];
+  onSelectClient?: (client: any) => void;
 }
 
-export const ClientForm: React.FC<ClientFormProps> = ({ data, onChange, errors = {} }) => {
+export const ClientForm: React.FC<ClientFormProps> = ({ 
+  data, 
+  onChange, 
+  errors = {},
+  clientsList = [],
+  onSelectClient,
+}) => {
   const getFieldError = (field: string) => errors[field];
+
+  const [suggestedClients, setSuggestedClients] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Deduplicate clientsList to avoid duplicate suggestions or dropdown options
+  const uniqueClients = React.useMemo(() => {
+    const seen = new Set<string>();
+    return (clientsList || []).filter((c) => {
+      if (!c) return false;
+      const key = `${c.id || ''}_${(c.name || '').toLowerCase().trim()}_${(c.mobileNumber || '').trim()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [clientsList]);
+
+  useEffect(() => {
+    if (!data.clientName || !uniqueClients || uniqueClients.length === 0) {
+      setSuggestedClients([]);
+      return;
+    }
+
+    const handler = setTimeout(() => {
+      const query = data.clientName.toLowerCase();
+      const matches = uniqueClients.filter(
+        (c) =>
+          c.name.toLowerCase().includes(query) ||
+          (c.businessName && c.businessName.toLowerCase().includes(query))
+      );
+      setSuggestedClients(matches.slice(0, 5));
+    }, 200);
+
+    return () => clearTimeout(handler);
+  }, [data.clientName, uniqueClients]);
 
   return (
     <div className="bg-white dark:bg-zinc-900 p-3 sm:p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-3 sm:space-y-5">
+      {uniqueClients && uniqueClients.length > 0 && (
+        <div className="p-3 bg-zinc-50 dark:bg-zinc-950/40 rounded-lg border border-zinc-200 dark:border-zinc-800 space-y-1.5">
+          <label className="block text-[10px] sm:text-xs font-semibold text-zinc-555 dark:text-zinc-400 uppercase tracking-wider">
+            Quick Auto-Fill From Registered Client Profile
+          </label>
+          <select
+            value={data.clientId || ""}
+            onChange={(e) => {
+              const selected = uniqueClients.find((c) => c.id === e.target.value);
+              if (selected && onSelectClient) {
+                onSelectClient(selected);
+              }
+            }}
+            className="w-full px-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 transition cursor-pointer"
+          >
+            <option value="" disabled>-- Select Registered Client Profile --</option>
+            {uniqueClients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} {c.businessName ? `(${c.businessName})` : ""} - {c.mobileNumber}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="border-b border-zinc-100 dark:border-zinc-800 pb-2">
         <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
           <User className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
@@ -45,13 +112,46 @@ export const ClientForm: React.FC<ClientFormProps> = ({ data, onChange, errors =
               required
               placeholder="e.g. Radhika Sharma"
               value={data.clientName}
-              onChange={(e) => onChange({ clientName: e.target.value })}
+              onChange={(e) => {
+                onChange({ clientName: e.target.value });
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => {
+                setTimeout(() => setShowSuggestions(false), 200);
+              }}
               className={`w-full pl-8 pr-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-950 border ${
                 getFieldError('clientName') || getFieldError('name')
                   ? 'border-red-500 focus:ring-red-500/20'
                   : 'border-zinc-200 dark:border-zinc-800 focus:border-zinc-400'
               } rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 transition`}
             />
+
+            {showSuggestions && suggestedClients.length > 0 && (
+              <div className="absolute left-0 right-0 z-50 mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md shadow-lg max-h-48 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800 animate-in fade-in slide-in-from-top-1 duration-150">
+                {suggestedClients.map((client) => (
+                  <button
+                    key={client.id}
+                    type="button"
+                    onClick={() => {
+                      if (onSelectClient) {
+                        onSelectClient(client);
+                      }
+                      setShowSuggestions(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-850 flex items-center justify-between transition cursor-pointer"
+                  >
+                    <div>
+                      <p className="font-semibold text-zinc-900 dark:text-zinc-150">{client.name}</p>
+                      {client.businessName && (
+                        <p className="text-[10px] text-zinc-500">{client.businessName}</p>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-zinc-400 font-mono">{client.mobileNumber}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           {(getFieldError('clientName') || getFieldError('name')) && (
             <p className="text-[10px] text-red-500 mt-0.5 font-medium">

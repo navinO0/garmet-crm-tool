@@ -255,7 +255,7 @@ export const BulkOrderForm: React.FC<BulkOrderFormProps> = ({ data, step = 2, on
     } catch (e) {}
 
     const defaultFields: CustomPriceField[] = [
-      { label: 'Base Stitching', amount: selected.baseStitchingCost || 500 },
+      { label: 'Base Stitching', amount: selected.bulkBaseStitchingCost || selected.baseStitchingCost || 500 },
       { label: 'Lining / Canvas', amount: 0 },
       { label: 'Embroidery / Handwork', amount: 0 },
       { label: 'Finishing & Latkan', amount: 0 },
@@ -267,7 +267,7 @@ export const BulkOrderForm: React.FC<BulkOrderFormProps> = ({ data, step = 2, on
       outfitStyleId: selected.id,
       itemDescription: selected.name,
       category: selected.category || 'Ethnic Wear',
-      unitRate: selected.baseStitchingCost || 500,
+      unitRate: selected.bulkBaseStitchingCost || selected.baseStitchingCost || 500,
       fabricDetails: selected.materialRequiredSpecs || updated[index].fabricDetails,
       materialsList: parsedMaterials,
       customPriceFields: defaultFields,
@@ -373,7 +373,7 @@ export const BulkOrderForm: React.FC<BulkOrderFormProps> = ({ data, step = 2, on
                       <option value="">Custom Outfit</option>
                       {outfitStyles.map((style) => (
                         <option key={style.id} value={style.id}>
-                          {style.name} (₹{style.baseStitchingCost})
+                          {style.name} (₹{style.bulkBaseStitchingCost || style.baseStitchingCost || 0})
                         </option>
                       ))}
                     </select>

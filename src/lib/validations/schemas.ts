@@ -24,21 +24,23 @@ export type ClientInput = z.infer<typeof clientSchema>;
 
 // 2. Bulk Order Item Schema
 export const bulkOrderItemSchema = z.object({
-  styleNumber: z.string().trim().min(1, "Style number is required"),
-  garmentType: z.string().trim().min(1, "Garment type is required"),
+  itemDescription: z.string().trim().min(1, "Item description is required"),
+  category: z.string().trim().min(1, "Category is required"),
   quantity: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? NaN : Number(val)),
     z.number().int("Quantity must be an integer").min(1, "Quantity must be at least 1")
   ),
-  unitPrice: requiredNumber,
-  targetDeliveryDate: z.string().optional(),
-  sizeXS: optionalNumber,
-  sizeS: optionalNumber,
-  sizeM: optionalNumber,
-  sizeL: optionalNumber,
-  sizeXL: optionalNumber,
-  sizeXXL: optionalNumber,
-  notes: z.string().optional(),
+  unitRate: requiredNumber,
+  outfitStyleId: z.string().optional().nullable(),
+  fabricDetails: z.string().optional().nullable(),
+  sizeBreakdown: z.string().optional().nullable(),
+  sizesMap: z.record(z.string(), z.number()).optional().nullable(),
+  priceBreakup: z.record(z.string(), z.number()).optional().nullable(),
+  customPriceFields: z.array(z.object({
+    label: z.string(),
+    amount: z.number(),
+  })).optional().nullable(),
+  materialsList: z.array(z.any()).optional().nullable(),
 });
 
 export type BulkOrderItemInput = z.infer<typeof bulkOrderItemSchema>;

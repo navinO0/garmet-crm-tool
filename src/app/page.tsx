@@ -7,6 +7,8 @@ import { ClientForm, ClientData } from '@/components/bulk/ClientForm';
 import { BulkOrderForm, BulkOrderFormData } from '@/components/bulk/BulkOrderForm';
 import { AgreementSignatureSection, AgreementData } from '@/components/bulk/AgreementSignatureSection';
 import { OrderLifecycleModal } from '@/components/bulk/OrderLifecycleModal';
+import { BulkOrderDetailModal } from '@/components/bulk/BulkOrderDetailModal';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { clientSchema } from '@/lib/validations/schemas';
 import {
   Scissors,
@@ -28,6 +30,7 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import { useProductionStore } from '@/store/productionStore';
+import { toast } from 'sonner';
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -36,10 +39,24 @@ function DashboardContent() {
   const [activeTab, setActiveTab] = useState<'bulk' | 'boutique' | 'orders'>('bulk');
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsgState] = useState<string | null>(null);
+  const setErrorMsg = (msg: string | null) => {
+    setErrorMsgState(msg);
+    if (msg) {
+      toast.error(msg);
+    }
+  };
 
   // Selected Order for Lifecycle Management Modal
   const [selectedOrderForLifecycle, setSelectedOrderForLifecycle] = useState<any>(null);
+  const [registeredClients, setRegisteredClients] = useState<any[]>([]);
+  const [selectedOrderForDetail, setSelectedOrderForDetail] = useState<any>(null);
+
+  // Date and Search filters for Bulk order history
+  const [bulkSearchQuery, setBulkSearchQuery] = useState("");
+  const [bulkStartDate, setBulkStartDate] = useState("");
+  const [bulkEndDate, setBulkEndDate] = useState("");
+  const [bulkStatusFilter, setBulkStatusFilter] = useState("ALL");
 
   // Sync state with URL query param if present
   useEffect(() => {
@@ -104,7 +121,7 @@ function DashboardContent() {
 
   const [completedOrderResult, setCompletedOrderResult] = useState<any>(null);
 
-  // Load past orders from SQLite
+  // Load past orders from SQLite / PostgreSQL
   const fetchOrders = async () => {
     try {
       setIsLoadingOrders(true);
@@ -120,8 +137,21 @@ function DashboardContent() {
     }
   };
 
+  const fetchClients = async () => {
+    try {
+      const res = await fetch('/api/clients');
+      const data = await res.json();
+      if (data.success) {
+        setRegisteredClients(data.clients || []);
+      }
+    } catch (e) {
+      console.error('Failed to fetch clients:', e);
+    }
+  };
+
   useEffect(() => {
     fetchOrders();
+    fetchClients();
   }, []);
 
   // Load draft state from localStorage on mount
@@ -201,17 +231,20 @@ function DashboardContent() {
           });
         }
 
-        fetch('/api/clients', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: clientData.clientName,
-            businessName: clientData.businessName,
-            mobileNumber: clientData.mobileNumber,
-            email: clientData.email,
-            address: clientData.address,
-          }),
-        }).catch((err) => console.error('Error syncing client to DB:', err));
+        // Only sync to DB if this is a manually-typed client (not already a registered one)
+        if (!clientData.clientId) {
+          fetch('/api/clients', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: clientData.clientName,
+              businessName: clientData.businessName,
+              mobileNumber: clientData.mobileNumber,
+              email: clientData.email,
+              address: clientData.address,
+            }),
+          }).catch((err) => console.error('Error syncing client to DB:', err));
+        }
       } catch (err) {
         console.error('Error saving customer profile:', err);
       }
@@ -234,10 +267,6 @@ function DashboardContent() {
       setErrorMsg(null);
       if (!agreementData.termsAccepted) {
         setErrorMsg('You must accept the terms & conditions to proceed.');
-        return;
-      }
-      if (!agreementData.clientSignature) {
-        setErrorMsg('Please provide the Client Digital Signature.');
         return;
       }
 
@@ -378,6 +407,185 @@ function DashboardContent() {
       {/* BOUTIQUE SECTION */}
       {activeTab === 'boutique' && <BoutiqueSection />}
 
+      {/* STORAGE / BULK ORDERS SECTION */}
+      {activeTab === 'orders' && (
+        <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-150 dark:border-zinc-800 pb-4">
+            <div>
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <HardDrive className="w-5 h-5 text-indigo-650 dark:text-indigo-400" />
+                Bulk Stitching Storage Records
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                Verify and manage bulk manufacturing contracts, invoices, status, and output image collections.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setActiveTab('bulk');
+                resetForm();
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-md shadow transition shrink-0 cursor-pointer"
+            >
+              <PlusCircle className="w-3.5 h-3.5" /> New Bulk Order
+            </button>
+          </div>
+
+          {/* Filters Area */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-zinc-50 dark:bg-zinc-950/20 p-3 rounded-lg border border-zinc-150 dark:border-zinc-850">
+            {/* Search */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Search</label>
+              <input
+                type="text"
+                placeholder="Search Client or Order..."
+                value={bulkSearchQuery}
+                onChange={(e) => setBulkSearchQuery(e.target.value)}
+                className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 transition"
+              />
+            </div>
+
+            {/* Date Range Start */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Start Date</label>
+              <input
+                type="date"
+                value={bulkStartDate}
+                onChange={(e) => setBulkStartDate(e.target.value)}
+                className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 transition"
+              />
+            </div>
+
+            {/* Date Range End */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">End Date</label>
+              <input
+                type="date"
+                value={bulkEndDate}
+                onChange={(e) => setBulkEndDate(e.target.value)}
+                className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 transition"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Status</label>
+              <select
+                value={bulkStatusFilter}
+                onChange={(e) => setBulkStatusFilter(e.target.value)}
+                className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500/20 transition cursor-pointer"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="Estimate Generated">Estimate Generated</option>
+                <option value="Estimate Approved">Estimate Approved</option>
+                <option value="Work Started">Work Started</option>
+                <option value="In Production">In Production</option>
+                <option value="Completed">Completed</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Extended">Extended</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Stored Orders Table */}
+          {isLoadingOrders ? (
+            <div className="text-center py-12 text-zinc-500 flex items-center justify-center gap-1.5 text-xs">
+              <Loader2 className="w-4 h-4 animate-spin text-zinc-400" /> Loading bulk records...
+            </div>
+          ) : savedOrders.length === 0 ? (
+            <div className="text-center py-12 text-zinc-455 text-xs italic">
+              No bulk order storage sheets found. Create one under the &quot;Bulk Order&quot; tab.
+            </div>
+          ) : (
+            <div className="border border-zinc-150 dark:border-zinc-800 rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader className="bg-zinc-50 dark:bg-zinc-900/60">
+                  <TableRow>
+                    <TableHead className="text-xs text-zinc-450">Order #</TableHead>
+                    <TableHead className="text-xs text-zinc-450">Client / Company</TableHead>
+                    <TableHead className="text-xs text-zinc-450 text-center">Status</TableHead>
+                    <TableHead className="text-xs text-zinc-450 text-right">Grand Total</TableHead>
+                    <TableHead className="text-xs text-zinc-450 text-center">Order Date</TableHead>
+                    <TableHead className="text-xs text-zinc-450 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {savedOrders
+                    .filter((order) => {
+                      const q = bulkSearchQuery.toLowerCase();
+                      const matchText = 
+                        order.orderNumber.toLowerCase().includes(q) ||
+                        (order.client?.name || "").toLowerCase().includes(q) ||
+                        (order.client?.businessName || "").toLowerCase().includes(q);
+
+                      const matchStatus = bulkStatusFilter === "ALL" || order.status === bulkStatusFilter;
+
+                      let matchDate = true;
+                      const orderDate = new Date(order.createdAt);
+                      if (bulkStartDate) {
+                        const start = new Date(bulkStartDate);
+                        start.setHours(0, 0, 0, 0);
+                        if (orderDate < start) matchDate = false;
+                      }
+                      if (bulkEndDate) {
+                        const end = new Date(bulkEndDate);
+                        end.setHours(23, 59, 59, 999);
+                        if (orderDate > end) matchDate = false;
+                      }
+
+                      return matchText && matchStatus && matchDate;
+                    })
+                    .map((order) => (
+                      <TableRow key={order.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20">
+                        <TableCell className="font-bold text-xs text-zinc-900 dark:text-zinc-100 py-3">
+                          {order.orderNumber}
+                        </TableCell>
+                        <TableCell className="text-xs py-3">
+                          <p className="font-semibold text-zinc-800 dark:text-zinc-200">{order.client?.name}</p>
+                          <p className="text-[10px] text-zinc-400">{order.client?.businessName || 'Direct Client'}</p>
+                        </TableCell>
+                        <TableCell className="text-xs text-center py-3">
+                          <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                            order.status === 'Completed' || order.status === 'Delivered'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/50'
+                              : order.status === 'Extended'
+                              ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800/50'
+                              : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800/50'
+                          }`}>
+                            {order.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs text-right font-extrabold py-3">
+                          {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(order.totalAmount)}
+                        </TableCell>
+                        <TableCell className="text-xs text-center text-zinc-400 py-3">
+                          {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </TableCell>
+                        <TableCell className="text-xs text-right py-3 space-x-1.5">
+                          <button
+                            onClick={() => setSelectedOrderForDetail(order)}
+                            className="px-2.5 py-1 text-zinc-600 hover:text-zinc-900 border border-zinc-200 hover:border-zinc-300 dark:text-zinc-400 dark:hover:text-white dark:border-zinc-800 rounded font-semibold text-[11px] transition inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" /> Detail View
+                          </button>
+                          {order.status !== 'Delivered' && (
+                            <button
+                              onClick={() => setSelectedOrderForLifecycle(order)}
+                              className="px-2.5 py-1 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 rounded font-semibold text-[11px] transition inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <Edit className="w-3.5 h-3.5" /> Lifecycle
+                            </button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* BULK MANUFACTURING SECTION */}
       {activeTab === 'bulk' && (
         <div>
@@ -477,7 +685,22 @@ function DashboardContent() {
 
               {/* Form Step 1: Client Details */}
               {currentStep === 1 && (
-                <ClientForm data={clientData} onChange={(u) => setClientData((prev) => ({ ...prev, ...u }))} errors={clientErrors} />
+                <ClientForm 
+                  data={clientData} 
+                  onChange={(u) => setClientData((prev) => ({ ...prev, ...u }))} 
+                  errors={clientErrors} 
+                  clientsList={registeredClients}
+                  onSelectClient={(client) => {
+                    setClientData({
+                      clientId: client.id,
+                      clientName: client.name,
+                      businessName: client.businessName || '',
+                      mobileNumber: client.mobileNumber,
+                      email: client.email || '',
+                      address: client.address || '',
+                    });
+                  }}
+                />
               )}
 
               {/* Form Step 2: Garment Specifications */}
@@ -561,6 +784,15 @@ function DashboardContent() {
           onUpdated={() => {
             fetchOrders();
           }}
+        />
+      )}
+
+      {/* Bulk Order Detail Modal */}
+      {selectedOrderForDetail && (
+        <BulkOrderDetailModal
+          order={selectedOrderForDetail}
+          isOpen={!!selectedOrderForDetail}
+          onClose={() => setSelectedOrderForDetail(null)}
         />
       )}
     </div>

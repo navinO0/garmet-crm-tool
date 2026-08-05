@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Plus, Check, Scissors, Ruler, Percent, Save, Trash2, PenTool, UploadCloud, Building, Pencil, X } from 'lucide-react';
+import { Settings, Plus, Check, Scissors, Ruler, Percent, Save, Trash2, PenTool, UploadCloud, Building, Pencil, X, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { NumberInput } from '@/components/ui/number-input';
 import { useProductionStore } from '@/store/productionStore';
 import { CloudinaryUpload } from '@/components/ui/CloudinaryUpload';
+import { toast } from 'sonner';
+
 
 export interface OutfitMaterialItem {
   name: string;
@@ -21,7 +23,7 @@ export default function SettingsPage() {
 
   // Company Profile & Digital Signature State
   const [companyName, setCompanyName] = useState(settings.companyName || 'Radhe Vastraz');
-  const [companySignatoryName, setCompanySignatoryName] = useState(settings.companySignatoryName || 'RAADHE LABEL by RADHE VASTRAZ');
+  const [companySignatoryName, setCompanySignatoryName] = useState(settings.companySignatoryName || 'RAADHE LABEL part of RADHE VASTRAZ');
   const [companyDesignation, setCompanyDesignation] = useState(settings.companyDesignation || 'Authorized Signatory & Managing Director');
   const [companySignature, setCompanySignature] = useState(settings.companySignature || '');
 
@@ -36,6 +38,8 @@ export default function SettingsPage() {
   const [newStyleName, setNewStyleName] = useState('');
   const [newStyleCategory, setNewStyleCategory] = useState('Ethnic Wear');
   const [newStyleCost, setNewStyleCost] = useState('800');
+  const [newStyleBoutiqueCost, setNewStyleBoutiqueCost] = useState('800');
+  const [newStyleBulkCost, setNewStyleBulkCost] = useState('600');
   const [newStyleImages, setNewStyleImages] = useState<string[]>([]);
   const [materialsList, setMaterialsList] = useState<OutfitMaterialItem[]>([
     { name: 'Main Fabric', quantityPerPc: 4.5, unit: 'meters' },
@@ -60,6 +64,12 @@ export default function SettingsPage() {
   const [editingSizeId, setEditingSizeId] = useState<string | null>(null);
 
   const [msg, setMsg] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingStyle, setIsSavingStyle] = useState(false);
+  const [isSavingSize, setIsSavingSize] = useState(false);
+  const [isSavingGst, setIsSavingGst] = useState(false);
+  const [deletingStyleId, setDeletingStyleId] = useState<string | null>(null);
+  const [deletingSizeId, setDeletingSizeId] = useState<string | null>(null);
 
   const loadSettingsData = async () => {
     try {
@@ -114,18 +124,25 @@ export default function SettingsPage() {
 
   const handleSaveCompanyProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    updateSettings({
-      companyName,
-      companySignatoryName,
-      companyDesignation,
-      companySignature,
-    });
-    setMsg('Company profile and official digital signature saved successfully!');
-    setTimeout(() => setMsg(null), 3000);
+    setIsSavingProfile(true);
+    try {
+      updateSettings({
+        companyName,
+        companySignatoryName,
+        companyDesignation,
+        companySignature,
+      });
+      toast.success('Company profile and official digital signature saved successfully!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save company profile');
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handleSaveGst = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSavingGst(true);
     try {
       const res = await fetch('/api/settings/gst', {
         method: 'POST',
@@ -137,11 +154,15 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setMsg('GST configuration saved successfully!');
-        setTimeout(() => setMsg(null), 3000);
+        toast.success('GST configuration saved successfully!');
+      } else {
+        toast.error(data.error || 'Failed to save GST configuration');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error(err.message || 'An error occurred while saving GST configuration');
+    } finally {
+      setIsSavingGst(false);
     }
   };
 
@@ -169,6 +190,7 @@ export default function SettingsPage() {
       .map((m) => `${m.quantityPerPc}${m.unit} ${m.name}`)
       .join(' + ');
 
+    setIsSavingStyle(true);
     try {
       const url = '/api/settings/outfit-styles';
       const method = editingStyleId ? 'PUT' : 'POST';
@@ -176,7 +198,9 @@ export default function SettingsPage() {
         id: editingStyleId || undefined,
         name: newStyleName,
         category: newStyleCategory,
-        baseStitchingCost: parseFloat(newStyleCost) || 500,
+        baseStitchingCost: parseFloat(newStyleBoutiqueCost) || 500,
+        boutiqueBaseStitchingCost: parseFloat(newStyleBoutiqueCost) || 500,
+        bulkBaseStitchingCost: parseFloat(newStyleBulkCost) || 500,
         materialRequiredSpecs: specsSummary,
         materials: materialsList.filter((m) => m.name),
         referenceImages: newStyleImages,
@@ -189,13 +213,17 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setMsg(editingStyleId ? 'Outfit Style template updated!' : 'Outfit Style template added!');
-        setTimeout(() => setMsg(null), 3000);
+        toast.success(editingStyleId ? 'Outfit Style template updated!' : 'Outfit Style template added!');
         handleCancelEditStyle();
         loadSettingsData();
+      } else {
+        toast.error(data.error || 'Failed to save outfit style template');
       }
     } catch (err: any) {
       console.error(err);
+      toast.error(err.message || 'An error occurred while saving outfit style template');
+    } finally {
+      setIsSavingStyle(false);
     }
   };
 
@@ -204,23 +232,27 @@ export default function SettingsPage() {
     setNewStyleName(style.name);
     setNewStyleCategory(style.category || 'Ethnic Wear');
     setNewStyleCost(String(style.baseStitchingCost || 800));
+    setNewStyleBoutiqueCost(String(style.boutiqueBaseStitchingCost || style.baseStitchingCost || 800));
+    setNewStyleBulkCost(String(style.bulkBaseStitchingCost || style.baseStitchingCost || 600));
 
     let styleImages: string[] = [];
     try {
       if (style.referenceImages) styleImages = JSON.parse(style.referenceImages);
-    } catch (e) {}
+    } catch (e) { }
     setNewStyleImages(styleImages);
 
     let materialsArray: OutfitMaterialItem[] = [];
     try {
       if (style.materialsJson) materialsArray = JSON.parse(style.materialsJson);
-    } catch (e) {}
+    } catch (e) { }
     setMaterialsList(materialsArray);
   };
 
   const handleCancelEditStyle = () => {
     setEditingStyleId(null);
     setNewStyleName('');
+    setNewStyleBoutiqueCost('800');
+    setNewStyleBulkCost('600');
     setNewStyleImages([]);
     setMaterialsList([
       { name: 'Main Fabric', quantityPerPc: 4.5, unit: 'meters' },
@@ -230,19 +262,24 @@ export default function SettingsPage() {
 
   const handleDeleteStyle = async (id: string) => {
     if (!confirm('Are you sure you want to delete this outfit style preset?')) return;
+    setDeletingStyleId(id);
     try {
       const res = await fetch(`/api/settings/outfit-styles?id=${id}`, {
         method: 'DELETE',
       });
       const data = await res.json();
       if (data.success) {
-        setMsg('Outfit Style template deleted successfully.');
-        setTimeout(() => setMsg(null), 3000);
+        toast.success('Outfit Style template deleted successfully.');
         loadSettingsData();
         if (editingStyleId === id) handleCancelEditStyle();
+      } else {
+        toast.error(data.error || 'Failed to delete outfit style template');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error(err.message || 'An error occurred while deleting outfit style template');
+    } finally {
+      setDeletingStyleId(null);
     }
   };
 
@@ -260,10 +297,25 @@ export default function SettingsPage() {
     setSizeMeasurementsMap(updated);
   };
 
+  const handleUpdateMeasurementInMap = (oldKey: string, newKey: string, newVal: string) => {
+    setSizeMeasurementsMap((prev) => {
+      const updated: Record<string, string> = {};
+      for (const [k, v] of Object.entries(prev)) {
+        if (k === oldKey) {
+          updated[newKey] = newVal;
+        } else {
+          updated[k] = v;
+        }
+      }
+      return updated;
+    });
+  };
+
   const handleAddSize = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSizeName || !newSizeCode) return;
 
+    setIsSavingSize(true);
     try {
       const url = '/api/settings/sizes';
       const method = editingSizeId ? 'PUT' : 'POST';
@@ -281,13 +333,17 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setMsg(editingSizeId ? 'Size specs updated!' : 'Size specs added!');
-        setTimeout(() => setMsg(null), 3000);
+        toast.success(editingSizeId ? 'Size specs updated!' : 'Size specs added!');
         handleCancelEditSize();
         loadSettingsData();
+      } else {
+        toast.error(data.error || 'Failed to save size specs');
       }
     } catch (err: any) {
       console.error(err);
+      toast.error(err.message || 'An error occurred while saving size specs');
+    } finally {
+      setIsSavingSize(false);
     }
   };
 
@@ -299,7 +355,7 @@ export default function SettingsPage() {
     let measObj: Record<string, string> = {};
     try {
       if (sz.measurementsJson) measObj = JSON.parse(sz.measurementsJson);
-    } catch (e) {}
+    } catch (e) { }
     setSizeMeasurementsMap(measObj);
   };
 
@@ -317,19 +373,24 @@ export default function SettingsPage() {
 
   const handleDeleteSize = async (id: string) => {
     if (!confirm('Are you sure you want to delete this size guide preset?')) return;
+    setDeletingSizeId(id);
     try {
       const res = await fetch(`/api/settings/sizes?id=${id}`, {
         method: 'DELETE',
       });
       const data = await res.json();
       if (data.success) {
-        setMsg('Size specs deleted successfully.');
-        setTimeout(() => setMsg(null), 3000);
+        toast.success('Size specs deleted successfully.');
         loadSettingsData();
         if (editingSizeId === id) handleCancelEditSize();
+      } else {
+        toast.error(data.error || 'Failed to delete size specs');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error(err.message || 'An error occurred while deleting size specs');
+    } finally {
+      setDeletingSizeId(null);
     }
   };
 
@@ -361,11 +422,10 @@ export default function SettingsPage() {
         <button
           type="button"
           onClick={() => setActiveTab('profile')}
-          className={`py-2 px-2 text-xs font-bold rounded flex items-center justify-center gap-1.5 transition ${
-            activeTab === 'profile'
+          className={`py-2 px-2 text-xs font-bold rounded flex items-center justify-center gap-1.5 transition ${activeTab === 'profile'
               ? 'bg-white dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 shadow-xs'
               : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-850'
-          }`}
+            }`}
         >
           <PenTool className="w-3.5 h-3.5" />
           <span>Profile & Signature</span>
@@ -374,11 +434,10 @@ export default function SettingsPage() {
         <button
           type="button"
           onClick={() => setActiveTab('outfits')}
-          className={`py-2 px-2 text-xs font-bold rounded flex items-center justify-center gap-1.5 transition ${
-            activeTab === 'outfits'
+          className={`py-2 px-2 text-xs font-bold rounded flex items-center justify-center gap-1.5 transition ${activeTab === 'outfits'
               ? 'bg-white dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 shadow-xs'
               : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-850'
-          }`}
+            }`}
         >
           <Scissors className="w-3.5 h-3.5" />
           <span>Preset Outfits</span>
@@ -387,11 +446,10 @@ export default function SettingsPage() {
         <button
           type="button"
           onClick={() => setActiveTab('sizes')}
-          className={`py-2 px-2 text-xs font-bold rounded flex items-center justify-center gap-1.5 transition ${
-            activeTab === 'sizes'
+          className={`py-2 px-2 text-xs font-bold rounded flex items-center justify-center gap-1.5 transition ${activeTab === 'sizes'
               ? 'bg-white dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 shadow-xs'
               : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-850'
-          }`}
+            }`}
         >
           <Ruler className="w-3.5 h-3.5" />
           <span>Sizes & Specs</span>
@@ -400,11 +458,10 @@ export default function SettingsPage() {
         <button
           type="button"
           onClick={() => setActiveTab('tax')}
-          className={`py-2 px-2 text-xs font-bold rounded flex items-center justify-center gap-1.5 transition ${
-            activeTab === 'tax'
+          className={`py-2 px-2 text-xs font-bold rounded flex items-center justify-center gap-1.5 transition ${activeTab === 'tax'
               ? 'bg-white dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 shadow-xs'
               : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-850'
-          }`}
+            }`}
         >
           <Percent className="w-3.5 h-3.5" />
           <span>Tax Settings</span>
@@ -447,7 +504,7 @@ export default function SettingsPage() {
                   type="text"
                   value={companySignatoryName}
                   onChange={(e) => setCompanySignatoryName(e.target.value)}
-                  placeholder="e.g. RAADHE LABEL by RADHE VASTRAZ"
+                  placeholder="e.g. RAADHE LABEL part of RADHE VASTRAZ"
                   className="text-xs"
                 />
               </div>
@@ -526,10 +583,15 @@ export default function SettingsPage() {
             <div className="flex justify-end">
               <button
                 type="submit"
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md transition shadow-sm cursor-pointer"
+                disabled={isSavingProfile}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md transition shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="w-3.5 h-3.5" />
-                Save Company Profile & Signature
+                {isSavingProfile ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Save className="w-3.5 h-3.5" />
+                )}
+                {isSavingProfile ? 'Saving...' : 'Save Company Profile & Signature'}
               </button>
             </div>
           </form>
@@ -584,14 +646,27 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-zinc-700 dark:text-zinc-300 mb-0.5">Base Stitching Cost (₹) *</label>
+                <label className="block text-[11px] font-medium text-zinc-700 dark:text-zinc-300 mb-0.5">Boutique Stitching Cost (₹) *</label>
                 <Input
                   type="text"
                   inputMode="decimal"
                   pattern="[0-9]*"
                   required
-                  value={newStyleCost}
-                  onChange={(e) => setNewStyleCost(e.target.value)}
+                  value={newStyleBoutiqueCost}
+                  onChange={(e) => setNewStyleBoutiqueCost(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded text-xs font-bold text-zinc-900 dark:text-zinc-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-zinc-700 dark:text-zinc-300 mb-0.5">Bulk Stitching Cost (₹) *</label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9]*"
+                  required
+                  value={newStyleBulkCost}
+                  onChange={(e) => setNewStyleBulkCost(e.target.value)}
                   className="w-full px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded text-xs font-bold text-zinc-900 dark:text-zinc-100"
                 />
               </div>
@@ -662,12 +737,25 @@ export default function SettingsPage() {
               />
             </div>
 
-            <div className="text-right">
+            <div className="text-right flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleCancelEditStyle}
+                className="px-4 py-1.5 bg-zinc-100 hover:bg-zinc-205 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs font-semibold rounded transition inline-flex items-center gap-1 cursor-pointer"
+              >
+                Reset
+              </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-bold rounded transition inline-flex items-center gap-1 shadow-sm cursor-pointer"
+                disabled={isSavingStyle}
+                className="px-4 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-bold rounded transition inline-flex items-center gap-1 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Plus className="w-3.5 h-3.5" /> Save Template
+                {isSavingStyle ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Plus className="w-3.5 h-3.5" />
+                )}
+                {isSavingStyle ? 'Saving...' : 'Save Template'}
               </button>
             </div>
           </form>
@@ -678,12 +766,12 @@ export default function SettingsPage() {
               let materialsArray: OutfitMaterialItem[] = [];
               try {
                 if (style.materialsJson) materialsArray = JSON.parse(style.materialsJson);
-              } catch (e) {}
+              } catch (e) { }
 
               let styleImages: string[] = [];
               try {
                 if (style.referenceImages) styleImages = JSON.parse(style.referenceImages);
-              } catch (e) {}
+              } catch (e) { }
 
               return (
                 <div key={style.id} className="p-3 bg-zinc-50 dark:bg-zinc-950 rounded-md border border-zinc-200 dark:border-zinc-800 space-y-2 flex flex-col justify-between group relative">
@@ -703,11 +791,16 @@ export default function SettingsPage() {
                             </button>
                             <button
                               type="button"
+                              disabled={deletingStyleId === style.id}
                               onClick={() => handleDeleteStyle(style.id)}
-                              className="p-0.5 text-red-500 hover:text-red-700 cursor-pointer"
+                              className="p-0.5 text-red-500 hover:text-red-700 cursor-pointer disabled:opacity-50"
                               title="Delete Preset"
                             >
-                              <Trash2 className="w-3 h-3" />
+                              {deletingStyleId === style.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-red-500" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
+                              )}
                             </button>
                           </div>
                         </div>
@@ -819,17 +912,30 @@ export default function SettingsPage() {
                 Configured Body Measurements ({newSizeCode || 'Code'})
               </span>
 
-              <div className="flex flex-wrap gap-1.5">
-                {Object.entries(sizeMeasurementsMap).map(([k, v]) => (
-                  <div key={k} className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-700 rounded text-[11px] flex items-center gap-1.5">
-                    <span className="font-bold text-zinc-900 dark:text-zinc-100">{k}:</span>
-                    <span className="font-mono text-zinc-700 dark:text-zinc-300">{v}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                {Object.entries(sizeMeasurementsMap).map(([k, v], idx) => (
+                  <div key={idx} className="flex gap-2 items-center bg-zinc-50 dark:bg-zinc-950 p-1.5 rounded border border-zinc-205 dark:border-zinc-800">
+                    <input
+                      type="text"
+                      value={k}
+                      onChange={(e) => handleUpdateMeasurementInMap(k, e.target.value, v)}
+                      className="w-24 px-2 py-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded text-xs font-semibold text-zinc-900 dark:text-zinc-100 shrink-0 font-sans"
+                      placeholder="e.g. Bust"
+                    />
+                    <input
+                      type="text"
+                      value={v}
+                      onChange={(e) => handleUpdateMeasurementInMap(k, k, e.target.value)}
+                      className="flex-1 min-w-0 px-2 py-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded text-xs font-mono text-zinc-900 dark:text-zinc-100 font-bold"
+                      placeholder="e.g. 36 in"
+                    />
                     <button
                       type="button"
                       onClick={() => handleRemoveMeasurementFromMap(k)}
-                      className="text-red-500 hover:text-red-700 p-0.5"
+                      className="p-1 text-red-500 hover:text-red-700 shrink-0 cursor-pointer"
+                      title="Remove Measurement"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
@@ -861,12 +967,25 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="text-right">
+            <div className="text-right flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleCancelEditSize}
+                className="px-4 py-1.5 bg-zinc-100 hover:bg-zinc-205 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs font-semibold rounded transition inline-flex items-center gap-1 cursor-pointer"
+              >
+                Reset
+              </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-bold rounded transition inline-flex items-center gap-1 shadow-sm cursor-pointer"
+                disabled={isSavingSize}
+                className="px-4 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-bold rounded transition inline-flex items-center gap-1 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Plus className="w-3.5 h-3.5" /> Save Size Specs
+                {isSavingSize ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Plus className="w-3.5 h-3.5" />
+                )}
+                {isSavingSize ? 'Saving...' : 'Save Size Specs'}
               </button>
             </div>
           </form>
@@ -877,33 +996,50 @@ export default function SettingsPage() {
               let measObj: Record<string, string> = {};
               try {
                 if (sz.measurementsJson) measObj = JSON.parse(sz.measurementsJson);
-              } catch (e) {}
+              } catch (e) { }
 
+              const isEditing = editingSizeId === sz.id;
               return (
-                <div key={sz.id} className="p-2.5 bg-zinc-50 dark:bg-zinc-950 rounded-md border border-zinc-200 dark:border-zinc-800 space-y-1 group relative">
-                  <div className="flex justify-between items-center border-b border-zinc-200 dark:border-zinc-800 pb-1">
-                    <div className="flex items-center gap-1">
-                      <span className="font-bold text-xs font-mono text-zinc-900 dark:text-zinc-100">{sz.code}</span>
-                      <div className="flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition">
-                        <button
-                          type="button"
-                          onClick={() => handleStartEditSize(sz)}
-                          className="p-0.5 text-zinc-550 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
-                          title="Edit Size Specs"
-                        >
-                          <Pencil className="w-2.5 h-2.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteSize(sz.id)}
-                          className="p-0.5 text-red-500 hover:text-red-750"
-                          title="Delete Size Preset"
-                        >
-                          <Trash2 className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
+                <div
+                  key={sz.id}
+                  className={`p-2.5 rounded-md border space-y-1 relative transition-all ${isEditing
+                      ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-400 dark:border-amber-600 ring-1 ring-amber-300 dark:ring-amber-700'
+                      : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800'
+                    }`}
+                >
+                  {/* Card Header: Code + Name + Action buttons */}
+                  <div className="flex justify-between items-start border-b border-zinc-200 dark:border-zinc-800 pb-1.5 gap-1">
+                    <div>
+                      <span className="font-bold text-xs font-mono text-zinc-900 dark:text-zinc-100 block">{sz.code}</span>
+                      <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 truncate block" title={sz.name}>{sz.name}</span>
                     </div>
-                    <span className="text-[10px] font-medium text-zinc-500 truncate max-w-[45px]" title={sz.name}>{sz.name}</span>
+                    {/* Edit + Delete always visible */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditSize(sz)}
+                        className={`p-1 rounded transition ${isEditing
+                            ? 'bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300'
+                            : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 hover:text-blue-700 dark:hover:text-blue-400'
+                          }`}
+                        title="Edit Size Specs"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={deletingSizeId === sz.id}
+                        onClick={() => handleDeleteSize(sz.id)}
+                        className="p-1 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-red-100 dark:hover:bg-red-900/40 hover:text-red-600 dark:hover:text-red-400 transition disabled:opacity-50"
+                        title="Delete Size Preset"
+                      >
+                        {deletingSizeId === sz.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-red-500" />
+                        ) : (
+                          <Trash2 className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   {Object.keys(measObj).length > 0 ? (
@@ -964,9 +1100,15 @@ export default function SettingsPage() {
 
             <button
               type="submit"
-              className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-semibold rounded transition inline-flex items-center gap-1 ml-auto cursor-pointer"
+              disabled={isSavingGst}
+              className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-semibold rounded transition inline-flex items-center gap-1 ml-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save className="w-3.5 h-3.5" /> Save Tax
+              {isSavingGst ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Save className="w-3.5 h-3.5" />
+              )}
+              {isSavingGst ? 'Saving...' : 'Save Tax'}
             </button>
           </form>
         </div>
@@ -1020,14 +1162,27 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-zinc-700 dark:text-zinc-300 mb-0.5">Base Stitching Cost (₹) *</label>
+                  <label className="block text-[11px] font-medium text-zinc-700 dark:text-zinc-300 mb-0.5">Boutique Stitching Cost (₹) *</label>
                   <Input
                     type="text"
                     inputMode="decimal"
                     pattern="[0-9]*"
                     required
-                    value={newStyleCost}
-                    onChange={(e) => setNewStyleCost(e.target.value)}
+                    value={newStyleBoutiqueCost}
+                    onChange={(e) => setNewStyleBoutiqueCost(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-250 dark:border-zinc-800 rounded text-xs font-bold text-zinc-900 dark:text-zinc-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-700 dark:text-zinc-300 mb-0.5">Bulk Stitching Cost (₹) *</label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*"
+                    required
+                    value={newStyleBulkCost}
+                    onChange={(e) => setNewStyleBulkCost(e.target.value)}
                     className="w-full px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-250 dark:border-zinc-800 rounded text-xs font-bold text-zinc-900 dark:text-zinc-100"
                   />
                 </div>
@@ -1107,9 +1262,15 @@ export default function SettingsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-zinc-900 hover:bg-zinc-850 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-bold rounded transition inline-flex items-center gap-1 shadow-sm cursor-pointer"
+                  disabled={isSavingStyle}
+                  className="px-4 py-1.5 bg-zinc-900 hover:bg-zinc-850 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-bold rounded transition inline-flex items-center gap-1 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Save className="w-3.5 h-3.5" /> Save Changes
+                  {isSavingStyle ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  {isSavingStyle ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -1168,17 +1329,30 @@ export default function SettingsPage() {
                   Configured Body Measurements ({newSizeCode || 'Code'})
                 </span>
 
-                <div className="flex flex-wrap gap-1.5">
-                  {Object.entries(sizeMeasurementsMap).map(([k, v]) => (
-                    <div key={k} className="px-2 py-0.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-750 rounded text-[11px] flex items-center gap-1.5">
-                      <span className="font-bold text-zinc-900 dark:text-zinc-100">{k}:</span>
-                      <span className="font-mono text-zinc-700 dark:text-zinc-300">{v}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1 max-h-[30vh] overflow-y-auto pr-1">
+                  {Object.entries(sizeMeasurementsMap).map(([k, v], idx) => (
+                    <div key={idx} className="flex gap-2 items-center bg-white dark:bg-zinc-900 p-1.5 rounded border border-zinc-200 dark:border-zinc-800">
+                      <input
+                        type="text"
+                        value={k}
+                        onChange={(e) => handleUpdateMeasurementInMap(k, e.target.value, v)}
+                        className="w-24 px-2 py-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded text-xs font-semibold text-zinc-900 dark:text-zinc-100 shrink-0 font-sans"
+                        placeholder="e.g. Bust"
+                      />
+                      <input
+                        type="text"
+                        value={v}
+                        onChange={(e) => handleUpdateMeasurementInMap(k, k, e.target.value)}
+                        className="flex-1 min-w-0 px-2 py-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded text-xs font-mono text-zinc-900 dark:text-zinc-100 font-bold"
+                        placeholder="e.g. 36 in"
+                      />
                       <button
                         type="button"
                         onClick={() => handleRemoveMeasurementFromMap(k)}
-                        className="text-red-500 hover:text-red-750 p-0.5"
+                        className="p-1 text-red-500 hover:text-red-700 shrink-0 cursor-pointer"
+                        title="Remove Measurement"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))}
@@ -1220,9 +1394,15 @@ export default function SettingsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-zinc-900 hover:bg-zinc-850 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-bold rounded transition inline-flex items-center gap-1 shadow-sm cursor-pointer"
+                  disabled={isSavingSize}
+                  className="px-4 py-1.5 bg-zinc-900 hover:bg-zinc-855 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-bold rounded transition inline-flex items-center gap-1 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Save className="w-3.5 h-3.5" /> Save Changes
+                  {isSavingSize ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  {isSavingSize ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

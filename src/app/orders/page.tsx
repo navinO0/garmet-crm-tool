@@ -24,8 +24,15 @@ import {
   ArrowRight,
   TrendingUp,
   X,
+  HardDrive,
+  Edit,
+  Loader2,
+  ExternalLink,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BulkOrderDetailModal } from "@/components/bulk/BulkOrderDetailModal";
+import { OrderLifecycleModal } from "@/components/bulk/OrderLifecycleModal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -61,6 +68,14 @@ function OrdersContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [ordersTab, setOrdersTab] = useState<'boutique' | 'bulk'>('boutique');
+  const [bulkOrders, setBulkOrders] = useState<any[]>([]);
+  const [isLoadingBulk, setIsLoadingBulk] = useState<boolean>(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const [selectedBulkOrder, setSelectedBulkOrder] = useState<any>(null);
+  const [selectedBulkOrderForLifecycle, setSelectedBulkOrderForLifecycle] = useState<any>(null);
 
   const [printableOrderId, setPrintableOrderId] = useState<string | null>(null);
 
@@ -73,6 +88,76 @@ function OrdersContent() {
   // Status Form State
   const [statusNotes, setStatusNotes] = useState("");
 
+  const fetchBulkOrders = async () => {
+    try {
+      setIsLoadingBulk(true);
+      const res = await fetch('/api/bulk-orders');
+      const data = await res.json();
+      if (data.success) {
+        setBulkOrders(data.orders || []);
+      }
+    } catch (e) {
+      console.error('Failed to fetch bulk orders:', e);
+    } finally {
+      setIsLoadingBulk(false);
+    }
+  };
+
+  const sendBulkViaWhatsApp = (order: any) => {
+    const phone = (order.client?.mobileNumber || '').replace(/[^0-9]/g, '');
+    const invoiceUrl = order.invoice?.invoicePdfBucketUrl || '';
+    const agreementUrl = order.agreement?.agreementPdfBucketUrl || '';
+    const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+    const lines = [
+      `*RAADHE LABEL — Bulk Order Confirmation*`,
+      ``,
+      `📋 Order #: ${order.orderNumber}`,
+      `👤 Client: ${order.client?.name}${order.client?.businessName ? ` (${order.client.businessName})` : ''}`,
+      `📦 Status: ${order.status}`,
+      `💰 Grand Total: ${fmt(order.totalAmount)}`,
+      `✅ Advance Paid: ${fmt(order.advancePayment)}`,
+      `🔄 Balance Due: ${fmt(order.remainingAmount)}`,
+      `🚚 Delivery: ${order.estimatedDelivery || 'As Scheduled'}`,
+      ``,
+      ...(invoiceUrl ? [`📄 *Invoice PDF:*\n${invoiceUrl}`] : []),
+      ...(agreementUrl ? [`📝 *Agreement PDF:*\n${agreementUrl}`] : []),
+      ``,
+      `Thank you for choosing RAADHE LABEL! 🙏`,
+    ];
+    const msg = encodeURIComponent(lines.join('\n'));
+    const url = phone ? `https://wa.me/91${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
+    window.open(url, '_blank');
+  };
+
+  const sendBoutiqueViaWhatsApp = (order: any) => {
+    const phone = (order.customerPhone || order.mobileNumber || '').replace(/[^0-9]/g, '');
+    const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+    const items = (order.products || []).map((p: any) => `  - ${p.quantity}x ${p.product}${p.stitchType ? ` (${p.stitchType})` : ''}`).join('\n');
+    const lines = [
+      `*RAADHE LABEL — Boutique Order Confirmation*`,
+      ``,
+      `📋 Order #: ${order.orderNumber}`,
+      `👤 Customer: ${order.customerName}`,
+      `👗 Garments:`,
+      items,
+      ``,
+      `💰 Grand Total: ${fmt(order.estimate?.total || 0)}`,
+      `📅 Delivery Date: ${order.deliveryDate || 'As Scheduled'}`,
+      `📦 Status: ${order.status}`,
+      ``,
+      `Thank you for choosing RAADHE LABEL! 🙏`,
+    ];
+    const msg = encodeURIComponent(lines.join('\n'));
+    const url = phone ? `https://wa.me/91${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
+    window.open(url, '_blank');
+  };
+
+  useEffect(() => {
+    if (ordersTab === 'bulk') {
+      fetchBulkOrders();
+    }
+  }, [ordersTab]);
+
   // Listen to select query parameter
   useEffect(() => {
     const selectId = searchParams.get("select");
@@ -84,7 +169,7 @@ function OrdersContent() {
     }
   }, [searchParams, orders]);
 
-  // Filters
+  // Filters for Boutique orders
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
       const matchSearch =
@@ -94,9 +179,50 @@ function OrdersContent() {
 
       const matchStatus = statusFilter === "ALL" || o.status === statusFilter;
 
-      return matchSearch && matchStatus;
+      let matchDate = true;
+      const orderDate = new Date(o.createdAt);
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (orderDate < start) matchDate = false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (orderDate > end) matchDate = false;
+      }
+
+      return matchSearch && matchStatus && matchDate;
     });
-  }, [orders, searchQuery, statusFilter]);
+  }, [orders, searchQuery, statusFilter, startDate, endDate]);
+
+  // Filters for Bulk Stitching orders
+  const filteredBulkOrders = useMemo(() => {
+    return bulkOrders.filter((o) => {
+      const matchSearch =
+        o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (o.client?.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (o.client?.businessName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.items.some((p: any) => p.itemDescription.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchStatus = statusFilter === "ALL" || o.status === statusFilter;
+
+      let matchDate = true;
+      const orderDate = new Date(o.createdAt);
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (orderDate < start) matchDate = false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (orderDate > end) matchDate = false;
+      }
+
+      return matchSearch && matchStatus && matchDate;
+    });
+  }, [bulkOrders, searchQuery, statusFilter, startDate, endDate]);
 
   const selectedOrder = useMemo(() => {
     return orders.find((o) => o.id === selectedOrderId) || null;
@@ -178,138 +304,334 @@ function OrdersContent() {
         </Link>
       </div>
 
+      {/* Tab Switcher */}
+      <div className="flex gap-2 p-1 bg-zinc-150 dark:bg-zinc-950/60 rounded-lg w-max border border-zinc-200 dark:border-zinc-800">
+        <button
+          onClick={() => setOrdersTab('boutique')}
+          className={`py-1.5 px-4 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${ordersTab === 'boutique'
+            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm font-bold animate-in fade-in duration-100'
+            : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+            }`}
+        >
+          <Scissors className="w-3.5 h-3.5" />
+          Boutique Custom Orders
+        </button>
+        <button
+          onClick={() => setOrdersTab('bulk')}
+          className={`py-1.5 px-4 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${ordersTab === 'bulk'
+            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm font-bold animate-in fade-in duration-100'
+            : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+            }`}
+        >
+          <HardDrive className="w-3.5 h-3.5" />
+          Bulk Stitching Orders
+        </button>
+      </div>
+
       {/* Control bar: Search and Filter */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white dark:bg-zinc-900 p-4 rounded-md border border-zinc-200 dark:border-zinc-800">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-3 bg-white dark:bg-zinc-900 p-4 rounded-md border border-zinc-200 dark:border-zinc-800">
         <div className="md:col-span-3 relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
           <Input
             type="text"
-            placeholder="Search orders by number, client name, products..."
+            placeholder={ordersTab === 'boutique' ? "Search custom orders by number, client..." : "Search bulk orders by number, company, item..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus-visible:bg-white"
+            className="pl-9 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus-visible:bg-white text-xs"
+          />
+        </div>
+        <div className="relative">
+          <input
+            type="date"
+            placeholder="Start Date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none transition cursor-pointer"
+          />
+        </div>
+        <div className="relative">
+          <input
+            type="date"
+            placeholder="End Date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none transition cursor-pointer"
           />
         </div>
         <div>
           <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "ALL")}>
-            <SelectTrigger className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
+            <SelectTrigger className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-xs">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-56">
               <SelectItem value="ALL">All Statuses</SelectItem>
-              {STATUS_ORDER.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status}
-                </SelectItem>
-              ))}
+              {ordersTab === 'boutique' ? (
+                STATUS_ORDER.map((status) => (
+                  <SelectItem key={status} value={status} className="text-xs">
+                    {status}
+                  </SelectItem>
+                ))
+              ) : (
+                ['Estimate Generated', 'Estimate Approved', 'Work Started', 'In Production', 'Completed', 'Delivered', 'Extended'].map((s) => (
+                  <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
       </div>
 
       {/* Orders Table */}
-      {filteredOrders.length === 0 ? (
-        <EmptyState
-          title="No Orders Found"
-          description={searchQuery || statusFilter !== "ALL" ? "Try adjusting your search query or filters." : "Create your first order to get started."}
-          actionText={statusFilter === "ALL" && !searchQuery ? "Create Order" : undefined}
-          onAction={statusFilter === "ALL" && !searchQuery ? () => router.push("/orders/new") : undefined}
-        />
-      ) : (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden">
-          {/* Desktop Table View */}
-          <div className="hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="font-bold text-zinc-500">Order</TableHead>
-                  <TableHead className="font-bold text-zinc-500">Customer</TableHead>
-                  <TableHead className="font-bold text-zinc-500">Garment Items</TableHead>
-                  <TableHead className="font-bold text-zinc-500">Due Date</TableHead>
-                  <TableHead className="font-bold text-zinc-500">Total Price</TableHead>
-                  <TableHead className="font-bold text-zinc-500">Production Status</TableHead>
-                  <TableHead className="font-bold text-zinc-500">Payment</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOrders.map((order) => {
-                  const itemsCount = order.products.reduce((acc, p) => acc + p.quantity, 0);
-                  const isOverdue =
-                    new Date(order.deliveryDate).getTime() < new Date().getTime() &&
-                    order.status !== "Completed" &&
-                    order.status !== "Delivered";
+      {ordersTab === 'boutique' ? (
+        filteredOrders.length === 0 ? (
+          <EmptyState
+            title="No Boutique Orders Found"
+            description={searchQuery || statusFilter !== "ALL" || startDate || endDate ? "Try adjusting your search query or filters." : "Create your first order to get started."}
+            actionText={statusFilter === "ALL" && !searchQuery ? "Create Order" : undefined}
+            onAction={statusFilter === "ALL" && !searchQuery ? () => router.push("/orders/new") : undefined}
+          />
+        ) : (
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden animate-in fade-in duration-100">
+            {/* Desktop Table View */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-bold text-zinc-500">Order</TableHead>
+                    <TableHead className="font-bold text-zinc-500">Customer</TableHead>
+                    <TableHead className="font-bold text-zinc-500">Garment Items</TableHead>
+                    <TableHead className="font-bold text-zinc-500">Due Date</TableHead>
+                    <TableHead className="font-bold text-zinc-500">Total Price</TableHead>
+                    <TableHead className="font-bold text-zinc-500">Production Status</TableHead>
+                    <TableHead className="font-bold text-zinc-500">Payment</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredOrders.map((order) => {
+                    const itemsCount = order.products.reduce((acc, p) => acc + p.quantity, 0);
+                    const isOverdue =
+                      new Date(order.deliveryDate).getTime() < new Date().getTime() &&
+                      order.status !== "Completed" &&
+                      order.status !== "Delivered";
 
-                  return (
-                    <TableRow
-                      key={order.id}
-                      onClick={() => setSelectedOrderId(order.id)}
-                      className="cursor-pointer hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20"
-                    >
-                      <TableCell className="font-bold text-zinc-900 dark:text-zinc-100">
+                    return (
+                      <TableRow
+                        key={order.id}
+                        onClick={() => setSelectedOrderId(order.id)}
+                        className="cursor-pointer hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20"
+                      >
+                        <TableCell className="font-bold text-zinc-900 dark:text-zinc-100">
+                          {order.orderNumber}
+                        </TableCell>
+                        <TableCell className="font-medium text-zinc-700 dark:text-zinc-300">
+                          {order.customerName}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs truncate block max-w-[200px]" title={order.products.map(p => p.product).join(", ")}>
+                            {order.products.map((p) => `${p.quantity}x ${p.product}`).join(", ")}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className={cn("text-xs font-semibold", isOverdue ? "text-red-500" : "")}>
+                            {order.deliveryDate}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-bold text-zinc-900 dark:text-zinc-100">
+                          {formatCurrency(order.estimate.total)}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={order.status} type="order" />
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={order.paymentStatus} type="payment" />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Card Layout */}
+            <div className="md:hidden divide-y divide-zinc-100 dark:divide-zinc-800">
+              {filteredOrders.map((order) => (
+                <div
+                  key={order.id}
+                  onClick={() => setSelectedOrderId(order.id)}
+                  className="p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/10 active:bg-zinc-100/50 cursor-pointer space-y-3"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-xs text-zinc-400 font-mono font-semibold">{order.orderNumber}</span>
+                      <h4 className="font-bold text-sm text-zinc-950 dark:text-zinc-100 mt-0.5">{order.customerName}</h4>
+                    </div>
+                    <span className="font-bold text-sm text-zinc-950 dark:text-zinc-100">
+                      {formatCurrency(order.estimate.total)}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-zinc-400 line-clamp-1">
+                    {order.products.map((p) => `${p.quantity}x ${p.product}`).join(", ")}
+                  </p>
+
+                  <div className="flex justify-between items-center pt-1 border-t border-zinc-100 dark:border-zinc-800/50">
+                    <span className="text-[10px] text-zinc-400 font-medium">Due: {order.deliveryDate}</span>
+                    <div className="flex space-x-1.5">
+                      <StatusBadge status={order.status} type="order" />
+                      <StatusBadge status={order.paymentStatus} type="payment" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      ) : (
+        /* Bulk Stitching Orders Tab */
+        isLoadingBulk ? (
+          <div className="text-center py-12 text-zinc-550 flex items-center justify-center gap-1.5 text-xs">
+            <Loader2 className="w-4 h-4 animate-spin text-zinc-405" /> Loading bulk stitching records...
+          </div>
+        ) : filteredBulkOrders.length === 0 ? (
+          <EmptyState
+            title="No Bulk Stitching Orders Found"
+            description={searchQuery || statusFilter !== "ALL" || startDate || endDate ? "Try adjusting your search query or filters." : "Create a bulk stitching agreement to get started."}
+          />
+        ) : (
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md overflow-hidden animate-in fade-in duration-100">
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-bold text-zinc-500">Order #</TableHead>
+                    <TableHead className="font-bold text-zinc-500">Client Profile</TableHead>
+                    <TableHead className="font-bold text-zinc-500 text-center">Items Qty</TableHead>
+                    <TableHead className="font-bold text-zinc-500 text-right">Grand Total</TableHead>
+                    <TableHead className="font-bold text-zinc-500 text-center">Order Date</TableHead>
+                    <TableHead className="font-bold text-zinc-500 text-center">Production Status</TableHead>
+                    <TableHead className="font-bold text-zinc-500 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredBulkOrders.map((order) => (
+                    <TableRow key={order.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20">
+                      <TableCell className="font-bold text-xs text-zinc-900 dark:text-zinc-100 py-3.5">
                         {order.orderNumber}
                       </TableCell>
-                      <TableCell className="font-medium text-zinc-700 dark:text-zinc-300">
-                        {order.customerName}
+                      <TableCell className="text-xs py-3.5">
+                        <p className="font-semibold text-zinc-850 dark:text-zinc-200">{order.client?.name}</p>
+                        <p className="text-[10px] text-zinc-450">{order.client?.businessName || 'Direct Client'}</p>
                       </TableCell>
-                      <TableCell>
-                        <span className="text-xs truncate block max-w-[200px]" title={order.products.map(p => p.product).join(", ")}>
-                          {order.products.map((p) => `${p.quantity}x ${p.product}`).join(", ")}
+                      <TableCell className="text-xs text-center py-3.5 font-bold">
+                        {order.items?.reduce((sum: number, it: any) => sum + it.quantity, 0)} pcs
+                      </TableCell>
+                      <TableCell className="text-xs text-right font-extrabold py-3.5">
+                        {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(order.totalAmount)}
+                      </TableCell>
+                      <TableCell className="text-xs text-center text-zinc-400 py-3.5">
+                        {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </TableCell>
+                      <TableCell className="text-xs text-center py-3.5">
+                        <span className={`inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${order.status === 'Completed' || order.status === 'Delivered'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/50'
+                          : order.status === 'Extended'
+                            ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800/50'
+                            : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800/50'
+                          }`}>
+                          {order.status}
                         </span>
                       </TableCell>
-                      <TableCell>
-                        <span className={cn("text-xs font-semibold", isOverdue ? "text-red-500" : "")}>
-                          {order.deliveryDate}
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-bold text-zinc-900 dark:text-zinc-100">
-                        {formatCurrency(order.estimate.total)}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={order.status} type="order" />
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={order.paymentStatus} type="payment" />
+                      <TableCell className="text-xs text-right py-3.5 space-x-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setSelectedBulkOrder(order)}
+                          className="h-8 text-[11px] font-semibold border border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" /> Details
+                        </Button>
+                        {/* WhatsApp button — temporarily disabled
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => sendBulkViaWhatsApp(order)}
+                          className="h-8 text-[11px] font-bold bg-[#25D366] hover:bg-[#1ebe5d] text-white inline-flex items-center gap-1 cursor-pointer border-0"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                        </Button>
+                        */}
+                        {order.status !== 'Delivered' && (
+                          <Button
+                            size="sm"
+                            onClick={() => setSelectedBulkOrderForLifecycle(order)}
+                            className="h-8 text-[11px] font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <Edit className="w-3.5 h-3.5" /> Status
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-          {/* Mobile Card Layout */}
-          <div className="md:hidden divide-y divide-zinc-100 dark:divide-zinc-800">
-            {filteredOrders.map((order) => (
-              <div
-                key={order.id}
-                onClick={() => setSelectedOrderId(order.id)}
-                className="p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/10 active:bg-zinc-100/50 cursor-pointer space-y-3"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-xs text-zinc-400 font-mono font-semibold">{order.orderNumber}</span>
-                    <h4 className="font-bold text-sm text-zinc-950 dark:text-zinc-100 mt-0.5">{order.customerName}</h4>
+            {/* Mobile card view for Bulk orders */}
+            <div className="block md:hidden divide-y divide-zinc-100 dark:divide-zinc-800/80">
+              {filteredBulkOrders.map((order) => (
+                <div key={order.id} className="p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-bold text-sm text-zinc-900 dark:text-zinc-50">{order.orderNumber}</p>
+                      <p className="text-xs text-zinc-550 font-semibold">{order.client?.name}</p>
+                    </div>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${order.status === 'Completed' || order.status === 'Delivered'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}>
+                      {order.status}
+                    </span>
                   </div>
-                  <span className="font-bold text-sm text-zinc-950 dark:text-zinc-100">
-                    {formatCurrency(order.estimate.total)}
-                  </span>
-                </div>
-                
-                <p className="text-xs text-zinc-400 line-clamp-1">
-                  {order.products.map((p) => `${p.quantity}x ${p.product}`).join(", ")}
-                </p>
-
-                <div className="flex justify-between items-center pt-1 border-t border-zinc-100 dark:border-zinc-800/50">
-                  <span className="text-[10px] text-zinc-400 font-medium">Due: {order.deliveryDate}</span>
-                  <div className="flex space-x-1.5">
-                    <StatusBadge status={order.status} type="order" />
-                    <StatusBadge status={order.paymentStatus} type="payment" />
+                  <div className="flex justify-between text-xs text-zinc-500">
+                    <span>Order Date: {new Date(order.createdAt).toLocaleDateString()}</span>
+                    <span className="font-bold text-zinc-850 dark:text-zinc-200">
+                      {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(order.totalAmount)}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 text-[11px] h-8"
+                      onClick={() => setSelectedBulkOrder(order)}
+                    >
+                      <ExternalLink className="w-3 h-3 mr-1" /> View details
+                    </Button>
+                    {/* WhatsApp button — temporarily disabled
+                    <Button
+                      size="sm"
+                      className="flex-1 text-[11px] h-8 bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0"
+                      onClick={() => sendBulkViaWhatsApp(order)}
+                    >
+                      <MessageCircle className="w-3 h-3 mr-1" /> WhatsApp
+                    </Button>
+                    */}
+                    {order.status !== 'Delivered' && (
+                      <Button
+                        size="sm"
+                        className="flex-1 text-[11px] h-8"
+                        onClick={() => setSelectedBulkOrderForLifecycle(order)}
+                      >
+                        <Edit className="w-3 h-3 mr-1" /> Update status
+                      </Button>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )
+
       )}
 
       {/* Order Details Popup Modal */}
@@ -372,6 +694,15 @@ function OrdersContent() {
                       <Printer className="h-3.5 w-3.5" /> Invoice
                     </Button>
                   </Link>
+                  {/* WhatsApp button — temporarily disabled
+                  <Button
+                    size="sm"
+                    onClick={() => sendBoutiqueViaWhatsApp(selectedOrder)}
+                    className="h-8 text-xs font-bold bg-[#25D366] hover:bg-[#1ebe5d] text-white shrink-0 gap-1.5 border-0 ml-auto"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" /> Send via WhatsApp
+                  </Button>
+                  */}
                 </div>
               </DialogHeader>
 
@@ -712,6 +1043,27 @@ function OrdersContent() {
         <BundleTicketModal
           orderId={printableOrderId}
           onClose={() => setPrintableOrderId(null)}
+        />
+      )}
+
+      {/* Bulk Order Details Modal */}
+      {selectedBulkOrder && (
+        <BulkOrderDetailModal
+          order={selectedBulkOrder}
+          isOpen={!!selectedBulkOrder}
+          onClose={() => setSelectedBulkOrder(null)}
+        />
+      )}
+
+      {/* Bulk Order Lifecycle Modal */}
+      {selectedBulkOrderForLifecycle && (
+        <OrderLifecycleModal
+          order={selectedBulkOrderForLifecycle}
+          isOpen={!!selectedBulkOrderForLifecycle}
+          onClose={() => setSelectedBulkOrderForLifecycle(null)}
+          onUpdated={() => {
+            fetchBulkOrders();
+          }}
         />
       )}
     </div>
