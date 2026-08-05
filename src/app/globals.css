@@ -122,20 +122,79 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Remove tap highlight flash on iOS */
+    -webkit-tap-highlight-color: transparent;
   }
   *, *::before, *::after {
     border-radius: 0px !important;
   }
   body {
     @apply bg-background text-foreground antialiased font-sans;
+    /* Prevent overscroll bounce at the body level competing with inner scroll */
+    overscroll-behavior: none;
   }
 
-  /* Prevent iOS Safari auto-zoom on input focus by setting font-size to 16px on mobile viewports */
+  /* ── Dynamic Viewport Height ───────────────────────────────────────────────
+     dvh = dynamic viewport height. On Safari iOS the toolbar collapses when
+     scrolling; dvh adjusts automatically so the layout never gets clipped.  */
+  html {
+    height: -webkit-fill-available;
+    scroll-behavior: smooth;
+  }
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    min-height: 100dvh;
+  }
+
+  /* ── Momentum (Inertial) Scrolling on iOS ─────────────────────────────────
+     Without this, iOS scroll inside any overflow container feels choppy/dead.
+     This applies to every scrollable container in the app.               */
+  [class*="overflow-y-auto"],
+  [class*="overflow-y-scroll"],
+  [class*="overflow-auto"],
+  [class*="overflow-scroll"],
+  .overflow-y-auto,
+  .overflow-auto,
+  main {
+    -webkit-overflow-scrolling: touch;
+    /* Contain scroll so parent page does not bounce while child scrolls */
+    overscroll-behavior-y: contain;
+  }
+
+  /* ── Prevent iOS Safari Auto-Zoom on Input Focus ──────────────────────────
+     iOS zooms in if font-size < 16px. Force 16px on mobile.              */
   @media screen and (max-width: 767px) {
     input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
     select,
     textarea {
       font-size: 16px !important;
     }
+
+    /* ── Minimum Touch Target Sizes (Apple HIG: 44x44pt) ─────────────────── */
+    button,
+    [role="button"],
+    a,
+    select {
+      min-height: 40px;
+    }
+
+    /* Compact icon buttons that are intentionally small — give them extra hit area via padding */
+    button.h-8,
+    button.h-7,
+    button.h-6 {
+      min-width: 40px;
+      min-height: 40px;
+    }
   }
+
+  /* ── Safe Area Insets (iPhone notch & home indicator) ────────────────────
+     Used by AppLayout to add padding so content is never hidden under iOS
+     system UI. Apply .safe-top / .safe-bottom utility classes as needed. */
+  .safe-top    { padding-top:    env(safe-area-inset-top);    }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-left   { padding-left:   env(safe-area-inset-left);   }
+  .safe-right  { padding-right:  env(safe-area-inset-right);  }
+  .pb-safe     { padding-bottom: env(safe-area-inset-bottom); }
+  .mb-safe     { margin-bottom:  env(safe-area-inset-bottom); }
 }

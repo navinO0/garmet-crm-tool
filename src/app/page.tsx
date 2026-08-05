@@ -328,6 +328,7 @@ function DashboardContent() {
         localStorage.removeItem('garment_bulk_order_draft');
       }
       fetchOrders();
+      fetchClients();
     } catch (e: any) {
       setErrorMsg(e.message || 'An unexpected error occurred.');
     } finally {
@@ -358,6 +359,7 @@ function DashboardContent() {
       ipAccepted: true,
       termsAccepted: true,
     });
+    fetchClients();
     if (typeof window !== 'undefined') {
       localStorage.removeItem('garment_bulk_order_draft');
     }

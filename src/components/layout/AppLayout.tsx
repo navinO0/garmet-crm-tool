@@ -235,7 +235,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 font-sans transition-colors duration-300">
+    <div className="flex overflow-hidden bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 font-sans transition-colors duration-300"
+      style={{ height: '100dvh' }}
+    >
       {/* Mobile Drawer Navigation */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetContent side="left" className="w-72 p-0 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800">
@@ -319,7 +321,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex h-12 sm:h-16 items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 sm:px-6 lg:px-8 transition-colors duration-300">
+        <header
+          className="flex h-12 sm:h-16 items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 sm:px-6 lg:px-8 transition-colors duration-300"
+          style={{
+            paddingLeft: `max(0.5rem, env(safe-area-inset-left))`,
+            paddingRight: `max(0.5rem, env(safe-area-inset-right))`,
+            paddingTop: `env(safe-area-inset-top)`,
+            // Expand header height to absorb safe area on iOS
+            height: `calc(3rem + env(safe-area-inset-top))`,
+          }}
+        >
           <div className="flex items-center flex-1">
             <Button
               variant="ghost"
@@ -371,7 +382,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-zinc-950 px-0 py-4 sm:p-6 lg:p-8 transition-colors duration-300">
+        <main
+          className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-zinc-950 px-0 py-4 sm:p-6 lg:p-8 transition-colors duration-300"
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehaviorY: 'contain',
+            paddingLeft: `max(0px, env(safe-area-inset-left))`,
+            paddingRight: `max(0px, env(safe-area-inset-right))`,
+            paddingBottom: `max(1rem, env(safe-area-inset-bottom))`,
+          }}
+        >
           {children}
         </main>
       </div>

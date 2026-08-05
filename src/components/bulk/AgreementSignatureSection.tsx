@@ -26,6 +26,7 @@ interface AgreementSignatureSectionProps {
   clientData?: ClientData;
   orderData?: BulkOrderFormData;
   onChange: (updated: Partial<AgreementData>) => void;
+  sizeChartEnabled?: boolean;
 }
 
 export const AgreementSignatureSection: React.FC<AgreementSignatureSectionProps> = ({
@@ -34,6 +35,7 @@ export const AgreementSignatureSection: React.FC<AgreementSignatureSectionProps>
   clientData,
   orderData,
   onChange,
+  sizeChartEnabled = true,
 }) => {
   const { settings } = useProductionStore();
 
@@ -295,8 +297,7 @@ export const AgreementSignatureSection: React.FC<AgreementSignatureSectionProps>
           ${invoiceHtml}
           <div class="page-break" style="page-break-before: always; break-before: page;"></div>
           ${agreementHtml}
-          <div class="page-break" style="page-break-before: always; break-before: page;"></div>
-          ${sizeChartHtml}
+          ${sizeChartEnabled ? `<div class="page-break" style="page-break-before: always; break-before: page;"></div>${sizeChartHtml}` : ''}
           <script>
             window.onload = function() { window.print(); };
           </script>
@@ -383,15 +384,17 @@ export const AgreementSignatureSection: React.FC<AgreementSignatureSectionProps>
             Print Terms & Agreement
           </button>
 
-          <button
-            type="button"
-            onClick={handlePrintSizeChart}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md transition shadow-sm"
-            title="Print Standalone Size Breakdown & Ratio Chart"
-          >
-            <Ruler className="w-3.5 h-3.5" />
-            Print Size Chart
-          </button>
+          {sizeChartEnabled && (
+            <button
+              type="button"
+              onClick={handlePrintSizeChart}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md transition shadow-sm"
+              title="Print Standalone Size Breakdown & Ratio Chart"
+            >
+              <Ruler className="w-3.5 h-3.5" />
+              Print Size Chart
+            </button>
+          )}
 
           <button
             type="button"
@@ -400,7 +403,7 @@ export const AgreementSignatureSection: React.FC<AgreementSignatureSectionProps>
             title="Print Complete Package (All Documents)"
           >
             <Printer className="w-3.5 h-3.5" />
-            Both
+            {sizeChartEnabled ? 'Both' : 'Both (Invoice + Agreement)'}
           </button>
         </div>
       </div>
