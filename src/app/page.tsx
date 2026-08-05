@@ -320,7 +320,28 @@ function DashboardContent() {
       const result = await res.json();
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to process order.');
+        // If the API returned field-level validation details, show each one in a toast
+        if (result.details && typeof result.details === 'object') {
+          const fieldErrors = result.details as Record<string, string[]>;
+          const entries = Object.entries(fieldErrors);
+          if (entries.length > 0) {
+            entries.forEach(([field, messages]) => {
+              const label = field
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, (s) => s.toUpperCase())
+                .trim();
+              (messages as string[]).forEach((msg) => {
+                toast.error(`${label}: ${msg}`);
+              });
+            });
+          } else {
+            toast.error(result.error || 'Validation failed. Please check all fields.');
+          }
+        } else {
+          toast.error(result.error || 'Failed to process order.');
+        }
+        setIsSubmitting(false);
+        return;
       }
 
       setCompletedOrderResult(result);
@@ -330,7 +351,7 @@ function DashboardContent() {
       fetchOrders();
       fetchClients();
     } catch (e: any) {
-      setErrorMsg(e.message || 'An unexpected error occurred.');
+      toast.error(e.message || 'An unexpected error occurred.');
     } finally {
       setIsSubmitting(false);
     }
@@ -675,12 +696,8 @@ function DashboardContent() {
                 </button>
               </div>
 
-              {/* Error Banner */}
-              {errorMsg && (
-                <div className="p-4 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 text-xs rounded-xl font-medium">
-                  {errorMsg}
-                </div>
-              )}
+
+
 
               {/* Form Step 1: Client Details */}
               {currentStep === 1 && (
