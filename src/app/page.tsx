@@ -78,7 +78,7 @@ function DashboardContent() {
     address: '',
   });
 
-  const [orderData, setOrderData] = useState<BulkOrderFormData>({
+  const EMPTY_ORDER_DATA: BulkOrderFormData = {
     items: [
       {
         itemDescription: '',
@@ -87,16 +87,14 @@ function DashboardContent() {
         unitRate: 0,
         fabricDetails: '',
         sizeBreakdown: '',
-        priceBreakup: {
-          baseStitching: 0,
-          liningCanvas: 0,
-          handworkEmbroidery: 300,
-          finishingLatkan: 100,
-        },
+        sizesMap: {},
+        customPriceFields: [],
       },
     ],
-    shippingCharges: 1200,
-    packingCharges: 800,
+    shippingCharges: 0,
+    packingCharges: 0,
+    materialCharges: 0,
+    materialProvidedBy: 'Client',
     estimatedDelivery: '',
     deliverySchedule: '',
     fabricProcurement: '',
@@ -104,7 +102,9 @@ function DashboardContent() {
     materialReceivedDetails: '',
     referenceImages: [],
     materialImages: [],
-  });
+  };
+
+  const [orderData, setOrderData] = useState<BulkOrderFormData>(EMPTY_ORDER_DATA);
 
   const [agreementData, setAgreementData] = useState<AgreementData>({
     clientSignatoryName: '',
@@ -345,15 +345,16 @@ function DashboardContent() {
       email: '',
       address: '',
     });
+    setOrderData(EMPTY_ORDER_DATA);
     setAgreementData({
       clientSignatoryName: '',
-      clientDesignation: 'Proprietor',
+      clientDesignation: '',
       clientSignature: '',
       witnessName: '',
       witnessMobile: '',
       witnessSignature: '',
-      clientInitials: 'RS',
-      labelInitials: 'RL',
+      clientInitials: '',
+      labelInitials: '',
       ipAccepted: true,
       termsAccepted: true,
     });

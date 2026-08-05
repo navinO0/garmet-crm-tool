@@ -96,36 +96,22 @@ export const BulkOrderForm: React.FC<BulkOrderFormProps> = ({ data, step = 2, on
       .catch((err) => console.error('Failed to load GST settings:', err));
   }, []);
 
+
   const addItem = () => {
-    const defaultSizesMap = { S: 5, M: 10, L: 8, XL: 2 };
-    const defaultPriceFields: CustomPriceField[] = [
-      { label: 'Base Stitching', amount: 600 },
-      { label: 'Lining / Canvas', amount: 250 },
-      { label: 'Embroidery / Handwork', amount: 250 },
-      { label: 'Finishing & Latkan', amount: 100 },
-    ];
-    const defaultMaterials: OutfitMaterialRequirement[] = [
-      { name: 'Main Fabric', quantityPerPc: 4.5, unit: 'meters' },
-      { name: 'Satin Inner Lining', quantityPerPc: 3.0, unit: 'meters' },
-      { name: 'Can-Can Netting', quantityPerPc: 1.5, unit: 'meters' },
-    ];
-
-    const totalRate = defaultPriceFields.reduce((sum, f) => sum + f.amount, 0);
-    const totalQty = Object.values(defaultSizesMap).reduce((sum, q) => sum + q, 0);
-
     const newItem: OrderItemData = {
-      itemDescription: 'Lehenga Choli Set',
-      category: 'Ethnic Wear',
-      quantity: totalQty,
-      unitRate: totalRate,
-      fabricDetails: '4.5m Main Fabric + 3.0m Satin Lining + 1.5m Can-Can per piece',
-      materialsList: defaultMaterials,
-      sizeBreakdown: 'S: 5, M: 10, L: 8, XL: 2',
-      sizesMap: defaultSizesMap,
-      customPriceFields: defaultPriceFields,
+      itemDescription: '',
+      category: '',
+      quantity: 0,
+      unitRate: 0,
+      fabricDetails: '',
+      materialsList: [],
+      sizeBreakdown: '',
+      sizesMap: {},
+      customPriceFields: [{ label: 'Base Stitching', amount: 0 }],
     };
     onChange({ items: [...data.items, newItem] });
   };
+
 
   const removeItem = (index: number) => {
     if (data.items.length === 1) return;
