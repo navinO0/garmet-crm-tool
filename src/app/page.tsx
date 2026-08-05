@@ -97,11 +97,11 @@ function DashboardContent() {
     ],
     shippingCharges: 1200,
     packingCharges: 800,
-    estimatedDelivery: '25 Working Days',
-    deliverySchedule: 'Single Complete Dispatch',
-    fabricProcurement: 'Directly paid by client to fabric vendor',
-    packingBrandingNotes: 'Includes brand label, size tag, wash care tag & transparent cover',
-    materialReceivedDetails: 'Received 50 meters Velvet fabric + 30 meters satin lining on 30-July-2026.',
+    estimatedDelivery: '',
+    deliverySchedule: '',
+    fabricProcurement: '',
+    packingBrandingNotes: '',
+    materialReceivedDetails: '',
     referenceImages: [],
     materialImages: [],
   });
@@ -368,22 +368,20 @@ function DashboardContent() {
       <div className="grid grid-cols-3 gap-1 p-1 bg-zinc-200/60 dark:bg-zinc-800/80 rounded-lg border border-zinc-300/50 dark:border-zinc-700 text-center">
         <button
           onClick={() => setActiveTab('bulk')}
-          className={`py-1.5 px-1 rounded-md text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition ${
-            activeTab === 'bulk'
-              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-          }`}
+          className={`py-1.5 px-1 rounded-md text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition ${activeTab === 'bulk'
+            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm'
+            : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+            }`}
         >
           <Layers className="w-3.5 h-3.5 shrink-0" />
           <span className="truncate">Bulk Order</span>
         </button>
         <button
           onClick={() => setActiveTab('boutique')}
-          className={`py-1.5 px-1 rounded-md text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition ${
-            activeTab === 'boutique'
-              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-          }`}
+          className={`py-1.5 px-1 rounded-md text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition ${activeTab === 'boutique'
+            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm'
+            : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+            }`}
         >
           <Scissors className="w-3.5 h-3.5 shrink-0" />
           <span className="truncate">Boutique</span>
@@ -393,11 +391,10 @@ function DashboardContent() {
             setActiveTab('orders');
             fetchOrders();
           }}
-          className={`py-1.5 px-1 rounded-md text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition ${
-            activeTab === 'orders'
-              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-          }`}
+          className={`py-1.5 px-1 rounded-md text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition ${activeTab === 'orders'
+            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm'
+            : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+            }`}
         >
           <HardDrive className="w-3.5 h-3.5 shrink-0" />
           <span className="truncate">Storage ({savedOrders.length})</span>
@@ -513,7 +510,7 @@ function DashboardContent() {
                   {savedOrders
                     .filter((order) => {
                       const q = bulkSearchQuery.toLowerCase();
-                      const matchText = 
+                      const matchText =
                         order.orderNumber.toLowerCase().includes(q) ||
                         (order.client?.name || "").toLowerCase().includes(q) ||
                         (order.client?.businessName || "").toLowerCase().includes(q);
@@ -545,13 +542,12 @@ function DashboardContent() {
                           <p className="text-[10px] text-zinc-400">{order.client?.businessName || 'Direct Client'}</p>
                         </TableCell>
                         <TableCell className="text-xs text-center py-3">
-                          <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                            order.status === 'Completed' || order.status === 'Delivered'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/50'
-                              : order.status === 'Extended'
+                          <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${order.status === 'Completed' || order.status === 'Delivered'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/50'
+                            : order.status === 'Extended'
                               ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800/50'
                               : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800/50'
-                          }`}>
+                            }`}>
                             {order.status}
                           </span>
                         </TableCell>
@@ -685,10 +681,10 @@ function DashboardContent() {
 
               {/* Form Step 1: Client Details */}
               {currentStep === 1 && (
-                <ClientForm 
-                  data={clientData} 
-                  onChange={(u) => setClientData((prev) => ({ ...prev, ...u }))} 
-                  errors={clientErrors} 
+                <ClientForm
+                  data={clientData}
+                  onChange={(u) => setClientData((prev) => ({ ...prev, ...u }))}
+                  errors={clientErrors}
                   clientsList={registeredClients}
                   onSelectClient={(client) => {
                     setClientData({
