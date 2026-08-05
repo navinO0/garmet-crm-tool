@@ -81,15 +81,15 @@ function DashboardContent() {
   const [orderData, setOrderData] = useState<BulkOrderFormData>({
     items: [
       {
-        itemDescription: 'Bridal Lehenga Choli Set',
-        category: 'Bridal / Heavy',
-        quantity: 25,
-        unitRate: 1500,
-        fabricDetails: '4.5m Velvet + 3m Satin Lining provided by client',
-        sizeBreakdown: 'S: 5, M: 10, L: 8, XL: 2',
+        itemDescription: '',
+        category: '',
+        quantity: 0,
+        unitRate: 0,
+        fabricDetails: '',
+        sizeBreakdown: '',
         priceBreakup: {
-          baseStitching: 800,
-          liningCanvas: 300,
+          baseStitching: 0,
+          liningCanvas: 0,
           handworkEmbroidery: 300,
           finishingLatkan: 100,
         },
@@ -108,13 +108,13 @@ function DashboardContent() {
 
   const [agreementData, setAgreementData] = useState<AgreementData>({
     clientSignatoryName: '',
-    clientDesignation: 'Proprietor',
+    clientDesignation: '',
     clientSignature: '',
     witnessName: '',
     witnessMobile: '',
     witnessSignature: '',
-    clientInitials: 'RS',
-    labelInitials: 'RL',
+    clientInitials: '',
+    labelInitials: '',
     ipAccepted: true,
     termsAccepted: true,
   });
