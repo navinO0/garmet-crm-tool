@@ -250,12 +250,18 @@ function DashboardContent() {
       }
     } else if (currentStep === 2) {
       if (orderData.items.length === 0 || !orderData.items[0].itemDescription) {
-        setErrorMsg('Please add at least one garment item to the order.');
+        toast.error('Please add at least one garment item to the order.');
+        return;
+      }
+    } else if (currentStep === 3) {
+      if (!orderData.estimatedDelivery) {
+        toast.error('Estimated Delivery Date is required. Please fill it in before proceeding.');
         return;
       }
     }
     setCurrentStep((prev) => prev + 1);
   };
+
 
   const handlePrevStep = () => {
     setErrorMsg(null);

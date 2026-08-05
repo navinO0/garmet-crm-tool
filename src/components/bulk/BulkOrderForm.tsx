@@ -747,6 +747,83 @@ export const BulkOrderForm: React.FC<BulkOrderFormProps> = ({ data, step = 2, on
               className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-xs leading-relaxed"
             />
           </div>
+
+          {/* ── Delivery Timeline & Remarks ── */}
+          <div className="p-4 bg-amber-50/60 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/40 space-y-4">
+            <span className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-amber-600" />
+              Delivery Timeline & Order Remarks
+            </span>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Estimated Delivery Date — REQUIRED */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-zinc-300 mb-1">
+                  Estimated Delivery Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={data.estimatedDelivery}
+                  onChange={(e) => onChange({ estimatedDelivery: e.target.value })}
+                  className={`w-full px-3 py-2 bg-white dark:bg-zinc-900 border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-amber-400/40 ${
+                    !data.estimatedDelivery
+                      ? 'border-red-400 dark:border-red-600 ring-1 ring-red-300 dark:ring-red-700'
+                      : 'border-amber-300 dark:border-amber-700'
+                  }`}
+                />
+                {!data.estimatedDelivery && (
+                  <p className="text-[10px] text-red-500 mt-0.5 font-medium">
+                    Estimated delivery date is required
+                  </p>
+                )}
+              </div>
+
+              {/* Delivery Schedule / Milestones */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-zinc-300 mb-1">
+                  Delivery Schedule / Milestones
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 50% by Aug 15, balance by Aug 30"
+                  value={data.deliverySchedule}
+                  onChange={(e) => onChange({ deliverySchedule: e.target.value })}
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-amber-300 dark:border-amber-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Fabric Procurement Notes */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-zinc-300 mb-1">
+                  Fabric Procurement Notes
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Client to provide fabric by Aug 5. Factory to source buttons and zippers."
+                  value={data.fabricProcurement}
+                  onChange={(e) => onChange({ fabricProcurement: e.target.value })}
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-amber-300 dark:border-amber-700 rounded-lg text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                />
+              </div>
+
+              {/* Packing & Branding Notes */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-zinc-300 mb-1">
+                  Packing & Branding Notes
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Pack individually in poly bags. Attach label tags. Use brand tissue paper."
+                  value={data.packingBrandingNotes}
+                  onChange={(e) => onChange({ packingBrandingNotes: e.target.value })}
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-amber-300 dark:border-amber-700 rounded-lg text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
