@@ -34,6 +34,7 @@ import { ColorPickerInput } from "@/components/ui/color-picker";
 import { GarmentSizeSelector } from "@/components/customers/GarmentSizeSelector";
 import { GARMENT_SIZE_CONFIGS, GarmentType } from "@/config/sizeCharts";
 import { generateInvoiceHTML, generateSizeChartHTML } from "@/lib/documentGenerator";
+import { PresetStyleCombobox } from "@/components/ui/PresetStyleCombobox";
 
 
 const STEPS = [
@@ -588,6 +589,29 @@ export default function NewOrder() {
         outfitStyleId: undefined
       };
     }
+    setProducts(updated);
+  };
+
+  const handleClearBoutiqueStyle = (index: number) => {
+    const updated = [...products];
+    updated[index] = {
+      ...updated[index],
+      product: '',
+      price: 0,
+      // @ts-ignore
+      outfitStyleId: undefined,
+    };
+    setProducts(updated);
+  };
+
+  const handleCustomBoutiqueStyleType = (index: number, val: string) => {
+    const updated = [...products];
+    updated[index] = {
+      ...updated[index],
+      product: val,
+      // @ts-ignore
+      outfitStyleId: undefined,
+    };
     setProducts(updated);
   };
 
@@ -1191,29 +1215,20 @@ export default function NewOrder() {
                 <div className="space-y-4">
                   {products.map((p, index) => (
                     <div key={index} className="grid grid-cols-1 sm:grid-cols-6 gap-3 p-4 bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-150 dark:border-zinc-850 rounded-md items-end">
-                      <div className="space-y-1">
-                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Preset Style</Label>
-                        <select
-                          // @ts-ignore
-                          value={p.outfitStyleId || ""}
-                          onChange={(e) => handleSelectOutfitStyle(index, e.target.value)}
-                          className="w-full h-9 px-2 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md text-xs text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:ring-1 focus:ring-zinc-400"
-                        >
-                          <option value="">Custom Outfit</option>
-                          {outfitStyles.map((style) => (
-                            <option key={style.id} value={style.id}>
-                              {style.name} (₹{style.boutiqueBaseStitchingCost || style.baseStitchingCost || 0})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-1 sm:col-span-2">
-                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Garment Description *</Label>
-                        <Input
-                          placeholder="e.g. Silk Tuxedo Jacket"
-                          value={p.product}
-                          onChange={(e) => handleProductChange(index, "product", e.target.value)}
-                          className="h-9 text-xs"
+                      <div className="space-y-1 sm:col-span-3">
+                        <Label className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">
+                          Style / Description *
+                          <span className="ml-1 text-[10px] text-zinc-400 font-normal normal-case">— type or pick preset</span>
+                        </Label>
+                        <PresetStyleCombobox
+                          presets={outfitStyles}
+                          value={p.product || ''}
+                          selectedPresetId={(p as any).outfitStyleId}
+                          onSelectPreset={(preset) => handleSelectOutfitStyle(index, preset.id)}
+                          onCustomType={(val) => handleCustomBoutiqueStyleType(index, val)}
+                          onClear={() => handleClearBoutiqueStyle(index)}
+                          placeholder="e.g. Silk Kurta Set"
+                          priceMode="boutique"
                         />
                       </div>
                       <div className="space-y-1">
@@ -1257,6 +1272,7 @@ export default function NewOrder() {
                         )}
                       </div>
                     </div>
+
                   ))}
                 </div>
               </div>

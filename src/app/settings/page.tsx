@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Plus, Check, Scissors, Ruler, Percent, Save, Trash2, PenTool, UploadCloud, Building, Pencil, X, Loader2 } from 'lucide-react';
+import { Settings, Plus, Check, Scissors, Ruler, Percent, Save, Trash2, PenTool, UploadCloud, Building, Pencil, X, Loader2, Layers } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { NumberInput } from '@/components/ui/number-input';
 import { useProductionStore } from '@/store/productionStore';
@@ -33,6 +33,8 @@ export default function SettingsPage() {
   // GST State
   const [gstEnabled, setGstEnabled] = useState<boolean>(false);
   const [gstPercentage, setGstPercentage] = useState<string>('5');
+  const [sizeChartEnabled, setSizeChartEnabled] = useState<boolean>(true);
+
 
   // New Outfit Style Form
   const [newStyleName, setNewStyleName] = useState('');
@@ -86,6 +88,7 @@ export default function SettingsPage() {
       if (dataGst.success && dataGst.setting) {
         setGstEnabled(dataGst.setting.gstEnabled);
         setGstPercentage(String(dataGst.setting.gstPercentage));
+        setSizeChartEnabled(dataGst.setting.sizeChartEnabled ?? true);
       }
     } catch (e) {
       console.error('Failed to load settings:', e);
@@ -150,6 +153,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           gstEnabled,
           gstPercentage: parseFloat(gstPercentage) || 0,
+          sizeChartEnabled,
         }),
       });
       const data = await res.json();
@@ -1111,6 +1115,57 @@ export default function SettingsPage() {
               {isSavingGst ? 'Saving...' : 'Save Tax'}
             </button>
           </form>
+
+          {/* Size Chart Print Setting */}
+          <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 mt-1">
+            <h2 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5 mb-1">
+              <Layers className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
+              Size Chart Document Settings
+            </h2>
+            <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+              Configure whether to enable the &quot;Print Size Chart&quot; feature in Order details and Invoices.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 bg-zinc-50 dark:bg-zinc-950 p-3 rounded-md border border-zinc-200 dark:border-zinc-800">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                <input
+                  type="checkbox"
+                  checked={sizeChartEnabled}
+                  onChange={(e) => setSizeChartEnabled(e.target.checked)}
+                  className="w-4 h-4 text-zinc-900 rounded border-zinc-300 focus:ring-zinc-500"
+                />
+                <span>Enable &quot;Print Size Chart&quot; Feature</span>
+              </label>
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsSavingGst(true);
+                  try {
+                    const res = await fetch('/api/settings/gst', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        gstEnabled,
+                        gstPercentage: parseFloat(gstPercentage) || 0,
+                        sizeChartEnabled,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (data.success) toast.success('Size chart setting saved!');
+                    else toast.error(data.error || 'Failed to save');
+                  } catch (err: any) {
+                    toast.error(err.message || 'An error occurred');
+                  } finally {
+                    setIsSavingGst(false);
+                  }
+                }}
+                disabled={isSavingGst}
+                className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-xs font-semibold rounded transition inline-flex items-center gap-1 ml-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSavingGst ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                {isSavingGst ? 'Saving...' : 'Save Setting'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

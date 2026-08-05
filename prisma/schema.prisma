@@ -162,8 +162,9 @@ model CustomMeasurement {
 }
 
 model SystemSetting {
-  id            String   @id @default("default")
-  gstEnabled    Boolean  @default(false)
-  gstPercentage Float    @default(5.0)
-  updatedAt     DateTime @updatedAt
+  id                String   @id @default("default")
+  gstEnabled        Boolean  @default(false)
+  gstPercentage     Float    @default(5.0)
+  sizeChartEnabled  Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
 }

@@ -48,6 +48,7 @@ export interface InvoiceDocData {
   isBoutique?: boolean;
   gstAmount?: number;
   laborPrintingCharges?: number;
+  sizeChartEnabled?: boolean;
 }
 
 export interface AgreementDocData {
@@ -95,9 +96,10 @@ export function generateInvoiceHTML(data: InvoiceDocData): string {
         ? `<div style="font-size: 10px; color: #475569; margin-top: 2px; font-style: italic;"><strong>Cost Breakup:</strong> ${breakupParts.join(' | ')}</div>`
         : '';
 
-      const sizeHtml = item.sizeBreakdown
+      const sizeHtml = item.sizeBreakdown && data.sizeChartEnabled !== false
         ? `<div style="font-size: 10px; color: #4f46e5; margin-top: 2px; font-family: monospace;"><strong>Size Ratio:</strong> ${item.sizeBreakdown}</div>`
         : '';
+
 
       const itemQty = Number(item.quantity) || 1;
       let fabricText = item.fabricDetails || '';
@@ -396,20 +398,86 @@ export interface SizeChartDocData {
 }
 
 export function generateSizeChartHTML(data: SizeChartDocData): string {
-  const itemRows = data.items.map((item, idx) => `
-    <tr>
-      <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: bold;">${idx + 1}</td>
-      <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">
+  // Collect all unique size keys across all items
+  const allSizesSet = new Set<string>();
+
+  const parsedItems = data.items.map(item => {
+    const sizeMap: Record<string, number> = {};
+    const raw = item.sizeBreakdown || '';
+
+    // Parse "S: 5, M: 10, L: 8, XL: 2" style breakdown
+    const pairs = raw.split(',').map((s: string) => s.trim()).filter(Boolean);
+    let isParseable = false;
+    pairs.forEach((pair: string) => {
+      const match = pair.match(/^(.+?)\s*:\s*(\d+)$/);
+      if (match) {
+        const sizeName = match[1].trim().toUpperCase();
+        const qty = parseInt(match[2], 10);
+        sizeMap[sizeName] = qty;
+        allSizesSet.add(sizeName);
+        isParseable = true;
+      }
+    });
+
+    return { ...item, sizeMap, isParseable, rawBreakdown: raw };
+  });
+
+  // Sort sizes in standard order
+  const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL', '5XL', 'FREE SIZE', 'CUSTOM'];
+  const allSizes = Array.from(allSizesSet).sort((a, b) => {
+    const ai = sizeOrder.indexOf(a);
+    const bi = sizeOrder.indexOf(b);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
+  const hasParsedSizes = allSizes.length > 0;
+
+  const sizeHeaders = hasParsedSizes
+    ? allSizes.map(s => `<th style="padding: 6px 10px; border-bottom: 1.5px solid #cbd5e1; font-weight: 700; color: #4f46e5; text-align: center; background: #eef2ff;">${s}</th>`).join('')
+    : '<th>Size Breakdown</th>';
+
+  const itemRows = parsedItems.map((item: any, idx: number) => {
+    const rowTotal = Object.values(item.sizeMap as Record<string, number>).reduce((sum: number, v: number) => sum + v, 0);
+    let sizeColumns = '';
+    if (hasParsedSizes && item.isParseable) {
+      sizeColumns = allSizes.map(s => {
+        const qty = item.sizeMap[s];
+        return `<td style="padding: 8px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-weight: ${qty ? '700' : '400'}; color: ${qty ? '#1e293b' : '#cbd5e1'};">${qty || '—'}</td>`;
+      }).join('');
+    } else if (hasParsedSizes) {
+      sizeColumns = allSizes.map(() => `<td style="padding: 8px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; color: #94a3b8;">—</td>`).join('');
+    } else {
+      sizeColumns = `<td style="padding: 8px 10px; border-bottom: 1px solid #f1f5f9; font-family: monospace; font-size: 12px; font-weight: bold; color: #4f46e5;">${item.rawBreakdown || 'Standard / Custom Sizing'}</td>`;
+    }
+
+    return `
+    <tr style="background: ${idx % 2 === 0 ? '#fff' : '#f8fafc'};">
+      <td style="padding: 8px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-weight: bold; color: #64748b;">${idx + 1}</td>
+      <td style="padding: 8px 10px; border-bottom: 1px solid #f1f5f9;">
         <strong style="font-size: 13px; color: #0f172a;">${item.itemDescription}</strong>
         ${item.category ? `<span style="color: #64748b; font-size: 11px;"> (${item.category})</span>` : ''}
-        ${item.fabricDetails ? `<div style="font-size: 11px; color: #475569; margin-top: 4px;"><strong>Fabric Specs:</strong> ${item.fabricDetails}</div>` : ''}
+        ${item.fabricDetails ? `<div style="font-size: 11px; color: #475569; margin-top: 3px;"><strong>Fabric:</strong> ${item.fabricDetails}</div>` : ''}
+        ${!item.isParseable && item.rawBreakdown ? `<div style="font-size: 11px; color: #4f46e5; font-family: monospace; margin-top: 3px;">${item.rawBreakdown}</div>` : ''}
       </td>
-      <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: bold; font-size: 13px;">${item.quantity}</td>
-      <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-size: 12px; font-weight: bold; color: #4f46e5;">
-        ${item.sizeBreakdown || 'Standard / Custom Sizing'}
-      </td>
-    </tr>
-  `).join('');
+      <td style="padding: 8px 10px; border-bottom: 1px solid #f1f5f9; text-align: center; font-weight: bold; font-size: 14px; color: #0f172a;">${hasParsedSizes && item.isParseable ? rowTotal : item.quantity}</td>
+      ${sizeColumns}
+    </tr>`;
+  }).join('');
+
+  const totalRow = hasParsedSizes ? `
+  <tr style="background: #f1f5f9;">
+    <td colspan="2" style="padding: 8px 10px; font-weight: 700; font-size: 12px; color: #334155; text-align: right; border-top: 1.5px solid #cbd5e1;">TOTAL PER SIZE →</td>
+    <td style="padding: 8px 10px; font-weight: 700; text-align: center; border-top: 1.5px solid #cbd5e1; color: #0f172a;">
+      ${parsedItems.reduce((sum: number, item: any) => sum + (item.isParseable ? Object.values(item.sizeMap as Record<string, number>).reduce((s: number, v: number) => s + v, 0) : item.quantity), 0)}
+    </td>
+    ${allSizes.map(s => {
+      const total = parsedItems.reduce((sum: number, item: any) => sum + (item.sizeMap[s] || 0), 0);
+      return `<td style="padding: 8px 10px; font-weight: 800; text-align: center; border-top: 1.5px solid #cbd5e1; color: #4f46e5; background: #eef2ff;">${total || '—'}</td>`;
+    }).join('')}
+  </tr>` : '';
 
   return `
 <!DOCTYPE html>
@@ -420,18 +488,18 @@ export function generateSizeChartHTML(data: SizeChartDocData): string {
   <style>
     * { box-sizing: border-box !important; }
     body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #0f172a; margin: 0; padding: 25px; background-color: #f8fafc; font-size: 12px; line-height: 1.4; }
-    .doc-card { max-width: 800px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 0; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .doc-card { max-width: 900px; margin: 0 auto; background: #ffffff; padding: 30px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .header { border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: flex-start; }
     .brand { font-size: 18px; font-weight: 900; color: #0f172a; }
     .doc-title { font-size: 18px; font-weight: 900; color: #4f46e5; text-align: right; letter-spacing: 0.5px; }
-    .meta { background: #f8fafc; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 0; margin-bottom: 16px; display: flex; justify-content: space-between; font-size: 11px; }
+    .meta { background: #f8fafc; padding: 10px 14px; border: 1px solid #e2e8f0; margin-bottom: 16px; display: flex; justify-content: space-between; font-size: 11px; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 12px; }
     th { background: #f8fafc; padding: 6px 8px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; border-bottom: 1.5px solid #cbd5e1; }
     .footer { border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center; font-size: 10px; color: #94a3b8; }
     @media print {
       body { padding: 0; background: white; }
       .doc-card { padding: 0; border: none; box-shadow: none; width: 100%; max-width: 100%; }
-      @page { size: A4 portrait; margin: 10mm 12mm; }
+      @page { size: A4 landscape; margin: 8mm 10mm; }
     }
   </style>
 </head>
@@ -440,7 +508,7 @@ export function generateSizeChartHTML(data: SizeChartDocData): string {
     <div class="header">
       <div>
         <div class="brand">RAADHE LABEL part of RADHE VASTRAZ</div>
-        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Bulk Stitching & Private Label Manufacturing</div>
+        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Bulk Stitching &amp; Private Label Manufacturing</div>
       </div>
       <div>
         <div class="doc-title">SIZE CHART BREAKDOWN</div>
@@ -460,22 +528,25 @@ export function generateSizeChartHTML(data: SizeChartDocData): string {
     </div>
 
     <h3 style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #334155; margin-bottom: 8px;">
-      1. Order Item Size Breakdown Matrix
+      1. Order Item Size Breakdown Matrix (Actual Measurements from Order)
     </h3>
 
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 35px; text-align: center;">#</th>
-          <th>Garment Description & Category</th>
-          <th style="width: 65px; text-align: center;">Total Qty</th>
-          <th>Ordered Size Breakdown (S, M, L, XL, XXL, Custom)</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${itemRows}
-      </tbody>
-    </table>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 30px; text-align: center;">#</th>
+            <th>Garment Description &amp; Category</th>
+            <th style="width: 70px; text-align: center; background: #f1f5f9;">Total Qty</th>
+            ${sizeHeaders}
+          </tr>
+        </thead>
+        <tbody>
+          ${itemRows}
+          ${totalRow}
+        </tbody>
+      </table>
+    </div>
 
     <h3 style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #334155; margin-top: 14px; margin-bottom: 8px;">
       2. Company Official Body Measurement Guide (For Client Awareness)
@@ -506,19 +577,20 @@ export function generateSizeChartHTML(data: SizeChartDocData): string {
       </table>
     </div>
 
-    <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px 14px; border-radius: 0; margin-bottom: 14px; font-size: 10.5px; color: #1e3a8a; line-height: 1.4;">
-      <strong>Client Fitting & Measurement Awareness Guide:</strong><br>
-      • <strong>Ease Allowance:</strong> Garments are tailored with 1.5 to 2.0 inches of ease over body measurements for comfort and mobility.<br>
-      • <strong>Internal Alteration Margins:</strong> Every garment includes 2.0 inches of internal side seam margins for future size adjustments.<br>
-      • <strong>Custom Specs:</strong> Special custom measurements provided by clients override standard chart values.<br>
-      • <strong>Tolerances:</strong> Standard Atelier manufacturing tolerance is ±0.5 inches.
+    <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px 14px; margin-bottom: 14px; font-size: 10.5px; color: #1e3a8a; line-height: 1.4;">
+      <strong>Client Fitting &amp; Measurement Awareness Guide:</strong><br>
+      &bull; <strong>Ease Allowance:</strong> Garments are tailored with 1.5 to 2.0 inches of ease over body measurements for comfort and mobility.<br>
+      &bull; <strong>Internal Alteration Margins:</strong> Every garment includes 2.0 inches of internal side seam margins for future size adjustments.<br>
+      &bull; <strong>Custom Specs:</strong> Special custom measurements provided by clients override standard chart values.<br>
+      &bull; <strong>Tolerances:</strong> Standard Atelier manufacturing tolerance is ±0.5 inches.
     </div>
 
     <div class="footer">
-      RAADHE LABEL part of RADHE VASTRAZ • Official Size Guide & Client Awareness Specification
+      RAADHE LABEL part of RADHE VASTRAZ &bull; Official Size Guide &amp; Client Awareness Specification
     </div>
   </div>
 </body>
 </html>
   `;
 }
+

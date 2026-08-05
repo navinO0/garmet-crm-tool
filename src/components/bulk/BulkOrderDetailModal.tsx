@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useCallback } from 'react';
-import { X, Calendar, Image as ImageIcon, FileText, DollarSign, Users, Scissors, Layers, CheckCircle2, ShieldCheck, Download, ExternalLink, MessageCircle } from 'lucide-react';
+
+import { X, Calendar, Image as ImageIcon, FileText, DollarSign, Users, Scissors, Layers, CheckCircle2, ShieldCheck, Download, ExternalLink, MessageCircle, Printer } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { generateInvoiceHTML, generateAgreementHTML, generateSizeChartHTML } from '@/lib/documentGenerator';
 
 interface BulkOrderDetailModalProps {
   order: any;
@@ -13,6 +15,20 @@ interface BulkOrderDetailModalProps {
 
 export const BulkOrderDetailModal: React.FC<BulkOrderDetailModalProps> = ({ order, isOpen, onClose }) => {
   const [activeImage, setActiveImage] = useState<string | null>(null);
+  const [sizeChartEnabled, setSizeChartEnabled] = useState<boolean>(true);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      fetch('/api/settings/gst')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.setting) {
+            setSizeChartEnabled(data.setting.sizeChartEnabled ?? true);
+          }
+        })
+        .catch(err => console.error('Failed to fetch size chart settings:', err));
+    }
+  }, [isOpen]);
 
   if (!isOpen || !order) return null;
 
@@ -42,6 +58,104 @@ export const BulkOrderDetailModal: React.FC<BulkOrderDetailModalProps> = ({ orde
     const message = encodeURIComponent(lines.join('\n'));
     const url = phone ? `https://wa.me/91${phone}?text=${message}` : `https://wa.me/?text=${message}`;
     window.open(url, '_blank');
+  };
+
+  const handlePrintInvoice = () => {
+    if (order.invoice?.invoicePdfBucketUrl) {
+      window.open(order.invoice.invoicePdfBucketUrl, '_blank');
+      return;
+    }
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const invoiceHtml = generateInvoiceHTML({
+      invoiceNumber: order.invoice?.invoiceNumber || `INV-${order.orderNumber}`,
+      orderNumber: order.orderNumber,
+      clientName: order.client?.name || order.clientName || 'Client',
+      businessName: order.client?.businessName || order.businessName || '',
+      mobileNumber: order.client?.mobileNumber || order.mobileNumber || '',
+      email: order.client?.email || order.email || '',
+      address: order.client?.address || order.address || '',
+      items: (order.items || []).map((i: any) => ({
+        itemDescription: i.itemDescription,
+        category: i.category,
+        quantity: i.quantity,
+        unitRate: i.unitRate,
+        totalPrice: i.totalPrice,
+        sizeBreakdown: i.sizeBreakdown,
+        fabricDetails: i.fabricDetails,
+      })),
+      subtotal: order.subtotalAmount || order.totalAmount,
+      shippingCharges: order.shippingCharges || 0,
+      packingCharges: order.packingCharges || 0,
+      materialCharges: order.materialCharges || 0,
+      gstAmount: order.gstAmount || 0,
+      totalAmount: order.totalAmount,
+      advancePaid: order.advancePayment || 0,
+      balanceDue: order.remainingAmount || 0,
+      invoiceDate: new Date(order.createdAt).toLocaleDateString(),
+      sizeChartEnabled: sizeChartEnabled,
+    });
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Invoice_${order.orderNumber}</title></head><body style="margin:0;padding:0;">${invoiceHtml}<script>window.onload=function(){window.print();};</script></body></html>`);
+    printWindow.document.close();
+  };
+
+  const handlePrintAgreement = () => {
+    if (order.agreement?.agreementPdfBucketUrl) {
+      window.open(order.agreement.agreementPdfBucketUrl, '_blank');
+      return;
+    }
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const agreementHtml = generateAgreementHTML({
+      orderNumber: order.orderNumber,
+      clientName: order.client?.name || order.clientName || 'Client',
+      businessName: order.client?.businessName || order.businessName || '',
+      mobileNumber: order.client?.mobileNumber || order.mobileNumber || '',
+      email: order.client?.email || order.email || '',
+      address: order.client?.address || order.address || '',
+      date: new Date(order.createdAt).toLocaleDateString(),
+      clientSignatoryName: order.agreement?.clientSignatoryName || order.client?.name || 'Client Signatory',
+      clientDesignation: order.agreement?.clientDesignation || 'Client',
+      clientSignature: order.agreement?.clientSignature || '',
+      companySignatoryName: 'RAADHE LABEL',
+      companyDesignation: 'Authorized Signatory',
+      witnessName: order.agreement?.witnessName || '',
+      witnessMobile: order.agreement?.witnessMobile || '',
+      witnessSignature: order.agreement?.witnessSignature || '',
+      clientInitials: order.clientInitials || '',
+      labelInitials: order.labelInitials || '',
+    });
+
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Agreement_${order.orderNumber}</title></head><body style="margin:0;padding:0;">${agreementHtml}<script>window.onload=function(){window.print();};</script></body></html>`);
+    printWindow.document.close();
+  };
+
+  const handlePrintSizeChart = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const sizeChartHtml = generateSizeChartHTML({
+      orderNumber: order.orderNumber,
+      clientName: order.client?.name || order.clientName || 'Client',
+      businessName: order.client?.businessName || order.businessName || '',
+      mobileNumber: order.client?.mobileNumber || order.mobileNumber || '',
+      email: order.client?.email || order.email || '',
+      date: new Date(order.createdAt).toLocaleDateString(),
+      items: (order.items || []).map((i: any) => ({
+        itemDescription: i.itemDescription,
+        category: i.category,
+        quantity: i.quantity,
+        sizeBreakdown: i.sizeBreakdown || 'Standard Sizing',
+        fabricDetails: i.fabricDetails,
+      })),
+    });
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Size_Chart_${order.orderNumber}</title></head><body style="margin:0;padding:0;">${sizeChartHtml}<script>window.onload=function(){window.print();};</script></body></html>`);
+    printWindow.document.close();
   };
 
   // Safe JSON Parsing of images
@@ -382,43 +496,57 @@ export const BulkOrderDetailModal: React.FC<BulkOrderDetailModalProps> = ({ orde
               </div>
             </div>
 
-            {/* Document PDF storage links */}
-            <div className="flex flex-wrap gap-3">
-              {order.invoice?.invoicePdfBucketUrl && (
-                <a 
-                  href={order.invoice.invoicePdfBucketUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-bold border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 bg-white dark:bg-zinc-900 shadow-sm"
+            {/* Document Print & Download Package */}
+            <div className="pt-4 border-t border-zinc-150 dark:border-zinc-800 space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-indigo-500" /> Print Documents & Legal Records
+              </h4>
+              <div className={`grid grid-cols-1 ${sizeChartEnabled ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3`}>
+                <button
+                  onClick={handlePrintInvoice}
+                  className="flex items-center justify-center gap-2 p-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 rounded-xl font-bold text-xs shadow-xs transition cursor-pointer"
                 >
-                  <Download className="w-3.5 h-3.5" /> Download Tax Invoice PDF
-                </a>
-              )}
-              {order.agreement?.agreementPdfBucketUrl && (
-                <a 
-                  href={order.agreement.agreementPdfBucketUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 font-bold border border-zinc-200 dark:border-zinc-800 rounded px-3 py-1.5 bg-white dark:bg-zinc-900 shadow-sm"
+                  <Download className="w-4 h-4 shrink-0" />
+                  <span>{order.invoice?.invoicePdfBucketUrl ? 'Download Tax Invoice' : 'Print Tax Invoice'}</span>
+                </button>
+
+                <button
+                  onClick={handlePrintAgreement}
+                  className="flex items-center justify-center gap-2 p-3 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-xl font-bold text-xs shadow-xs transition cursor-pointer"
                 >
-                  <ExternalLink className="w-3.5 h-3.5" /> View Agreement PDF
-                </a>
-              )}
+                  <ExternalLink className="w-4 h-4 shrink-0" />
+                  <span>{order.agreement?.agreementPdfBucketUrl ? 'View Agreement PDF' : 'Print Agreement'}</span>
+                </button>
+
+                {sizeChartEnabled && (
+                  <button
+                    onClick={handlePrintSizeChart}
+                    className="flex items-center justify-center gap-2 p-3 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 rounded-xl font-bold text-xs shadow-xs transition cursor-pointer"
+                  >
+                    <Printer className="w-4 h-4 shrink-0" />
+                    <span>Print Size Chart</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-zinc-150 dark:border-zinc-800 flex items-center justify-between gap-3 bg-zinc-50/50 dark:bg-zinc-950/30">
-          {/* WhatsApp button — temporarily disabled
-          <button
-            onClick={sendViaWhatsApp}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white text-xs font-bold rounded-lg shadow transition cursor-pointer"
-          >
-            <MessageCircle className="w-4 h-4" />
-            Send via WhatsApp
-          </button>
-          */}
+        <div className="p-4 border-t border-zinc-150 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3 bg-zinc-50/50 dark:bg-zinc-950/30">
+          <div className="flex items-center gap-2">
+            <Button onClick={handlePrintInvoice} variant="outline" size="sm" className="h-8 text-xs font-bold text-indigo-600 border-indigo-200 hover:bg-indigo-50">
+              <FileText className="w-3.5 h-3.5 mr-1" /> Invoice
+            </Button>
+            <Button onClick={handlePrintAgreement} variant="outline" size="sm" className="h-8 text-xs font-bold text-emerald-600 border-emerald-200 hover:bg-emerald-50">
+              <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Agreement
+            </Button>
+            {sizeChartEnabled && (
+              <Button onClick={handlePrintSizeChart} variant="outline" size="sm" className="h-8 text-xs font-bold text-purple-600 border-purple-200 hover:bg-purple-50">
+                <Printer className="w-3.5 h-3.5 mr-1" /> Size Chart
+              </Button>
+            )}
+          </div>
           <Button onClick={onClose} className="px-5 font-bold text-xs bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
             Close Job sheet
           </Button>

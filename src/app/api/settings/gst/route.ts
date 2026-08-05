@@ -13,6 +13,7 @@ export async function GET() {
           id: 'default',
           gstEnabled: false,
           gstPercentage: 5.0,
+          sizeChartEnabled: true,
         },
       });
     }
@@ -26,18 +27,20 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { gstEnabled, gstPercentage } = body;
+    const { gstEnabled, gstPercentage, sizeChartEnabled } = body;
 
     const setting = await db.systemSetting.upsert({
       where: { id: 'default' },
       update: {
         gstEnabled: Boolean(gstEnabled),
         gstPercentage: parseFloat(gstPercentage) || 0.0,
+        sizeChartEnabled: sizeChartEnabled === undefined ? true : Boolean(sizeChartEnabled),
       },
       create: {
         id: 'default',
         gstEnabled: Boolean(gstEnabled),
         gstPercentage: parseFloat(gstPercentage) || 0.0,
+        sizeChartEnabled: sizeChartEnabled === undefined ? true : Boolean(sizeChartEnabled),
       },
     });
 

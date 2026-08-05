@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Plus, Trash2, ShieldCheck, Truck, PackageCheck, Calendar, Image as ImageIcon, DollarSign, Ruler, Edit2, Tag, Percent, Scissors, Layers, Info } from 'lucide-react';
+import { PresetStyleCombobox } from '@/components/ui/PresetStyleCombobox';
 import { CloudinaryUpload } from '@/components/ui/CloudinaryUpload';
 import { NumberInput } from '@/components/ui/number-input';
 
@@ -275,6 +276,26 @@ export const BulkOrderForm: React.FC<BulkOrderFormProps> = ({ data, step = 2, on
     onChange({ items: updated });
   };
 
+  const handleClearOutfitStyle = (index: number) => {
+    const updated = [...data.items];
+    updated[index] = {
+      ...updated[index],
+      outfitStyleId: undefined,
+      itemDescription: '',
+    };
+    onChange({ items: updated });
+  };
+
+  const handleCustomStyleType = (index: number, val: string) => {
+    const updated = [...data.items];
+    updated[index] = {
+      ...updated[index],
+      outfitStyleId: undefined,
+      itemDescription: val,
+    };
+    onChange({ items: updated });
+  };
+
   // Financial calculations
   const totalUnits = data.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
   const subtotal = data.items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitRate) || 0), 0);
@@ -361,33 +382,20 @@ export const BulkOrderForm: React.FC<BulkOrderFormProps> = ({ data, step = 2, on
 
                 {/* Garment Basic Info - 2 Columns on Mobile */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                  <div className="col-span-2 sm:col-span-1">
+                  <div className="col-span-2 sm:col-span-2">
                     <label className="block text-[11px] font-medium text-zinc-700 dark:text-zinc-300 mb-0.5">
-                      Preset Style
+                      Style / Description *
+                      <span className="ml-1 text-[10px] text-zinc-400 font-normal normal-case">— type custom or pick a preset</span>
                     </label>
-                    <select
-                      value={item.outfitStyleId || ''}
-                      onChange={(e) => handleSelectOutfitStyle(index, e.target.value)}
-                      className="w-full px-2 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-md text-xs focus:ring-2 focus:ring-zinc-500"
-                    >
-                      <option value="">Custom Outfit</option>
-                      {outfitStyles.map((style) => (
-                        <option key={style.id} value={style.id}>
-                          {style.name} (₹{style.bulkBaseStitchingCost || style.baseStitchingCost || 0})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="col-span-2 sm:col-span-1">
-                    <label className="block text-[11px] font-medium text-zinc-700 dark:text-zinc-300 mb-0.5">Item Description *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Lehenga Choli Set"
+                    <PresetStyleCombobox
+                      presets={outfitStyles}
                       value={item.itemDescription}
-                      onChange={(e) => updateItem(index, 'itemDescription', e.target.value)}
-                      className="w-full px-2 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-md text-xs"
+                      selectedPresetId={item.outfitStyleId}
+                      onSelectPreset={(preset) => handleSelectOutfitStyle(index, preset.id)}
+                      onCustomType={(val) => handleCustomStyleType(index, val)}
+                      onClear={() => handleClearOutfitStyle(index)}
+                      placeholder="e.g. Lehenga Choli Set"
+                      priceMode="bulk"
                     />
                   </div>
 
