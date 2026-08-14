@@ -147,14 +147,37 @@ function InvoicesContent() {
         paymentTerms: (invoiceOrder as any).advanceType === 'custom'
           ? `Payment Terms: ${formatCurrency((invoiceOrder as any).advanceCustomAmount || (invoiceOrder.estimate.total * 0.5))} Advance`
           : `Payment Terms: ${(invoiceOrder as any).advancePercentage || 50}% Advance`,
-        items: invoiceOrder.products.map((p) => ({
-          itemDescription: p.product,
-          category: p.stitchType,
-          quantity: p.quantity,
-          unitRate: p.price,
-          totalPrice: p.price * p.quantity,
-          fabricDetails: (p as any).fabricDetails || p.notes,
-        })),
+        items: invoiceOrder.products.map((p) => {
+          let priceBreakup = null;
+          let customPriceFields = null;
+          if ((p as any).priceBreakupJson) {
+            try {
+              const parsed = JSON.parse((p as any).priceBreakupJson);
+              if (Array.isArray(parsed)) {
+                customPriceFields = parsed;
+              } else {
+                priceBreakup = parsed;
+              }
+            } catch (e) {
+              console.error("Failed to parse priceBreakupJson", e);
+            }
+          }
+          return {
+            itemDescription: p.product,
+            category: p.stitchType,
+            quantity: p.quantity,
+            unitRate: p.price,
+            totalPrice: p.price * p.quantity,
+            fabricDetails: (p as any).fabricDetails || p.notes,
+            sizeBreakdown: (p as any).sizeBreakdown,
+            priceBreakup,
+            customPriceFields,
+          };
+        }),
+        materialProvidedBy: (invoiceOrder as any).materialProvidedBy,
+        materialCharges: Number((invoiceOrder as any).materialCharges) || 0,
+        materialReceivedDetails: (invoiceOrder as any).materialReceivedDetails,
+        materials: invoiceOrder.materials,
         subtotal: invoiceOrder.estimate.stitching || invoiceOrder.estimate.subtotal || invoiceOrder.estimate.total,
         laborPrintingCharges: (invoiceOrder.estimate.embroidery || 0) + (invoiceOrder.estimate.printing || 0),
         shippingCharges: invoiceOrder.estimate.shipping || invoiceOrder.estimate.transport || 0,
@@ -166,6 +189,7 @@ function InvoicesContent() {
         balanceDue,
         invoiceDate: new Date(invoiceOrder.createdAt).toLocaleDateString(),
         isBoutique: !!invoiceOrder.measurements && (!!invoiceOrder.measurements.chest || !!invoiceOrder.measurements.waist || !!invoiceOrder.measurements.standardSize),
+        sizeChartEnabled: settings.sizeChartEnabled,
       });
 
       const sizeChartHtml = generateSizeChartHTML({

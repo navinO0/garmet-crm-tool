@@ -68,6 +68,9 @@ export const BulkOrderDetailModal: React.FC<BulkOrderDetailModalProps> = ({ orde
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    const grossTotal = (order.subtotalAmount || 0) + (order.materialCharges || 0) + (order.shippingCharges || 0) + (order.packingCharges || 0);
+    const discountAmount = Math.max(0, grossTotal - ((order.totalAmount || 0) - (order.gstAmount || 0)));
+
     const invoiceHtml = generateInvoiceHTML({
       invoiceNumber: order.invoice?.invoiceNumber || `INV-${order.orderNumber}`,
       orderNumber: order.orderNumber,
@@ -76,20 +79,42 @@ export const BulkOrderDetailModal: React.FC<BulkOrderDetailModalProps> = ({ orde
       mobileNumber: order.client?.mobileNumber || order.mobileNumber || '',
       email: order.client?.email || order.email || '',
       address: order.client?.address || order.address || '',
-      items: (order.items || []).map((i: any) => ({
-        itemDescription: i.itemDescription,
-        category: i.category,
-        quantity: i.quantity,
-        unitRate: i.unitRate,
-        totalPrice: i.totalPrice,
-        sizeBreakdown: i.sizeBreakdown,
-        fabricDetails: i.fabricDetails,
-      })),
+      items: (order.items || []).map((i: any) => {
+        let priceBreakup = null;
+        let customPriceFields = null;
+        if (i.priceBreakupJson) {
+          try {
+            const parsed = JSON.parse(i.priceBreakupJson);
+            if (Array.isArray(parsed)) {
+              customPriceFields = parsed;
+            } else {
+              priceBreakup = parsed;
+            }
+          } catch (e) {
+            console.error("Failed to parse priceBreakupJson", e);
+          }
+        }
+        return {
+          itemDescription: i.itemDescription,
+          category: i.category,
+          quantity: i.quantity,
+          unitRate: i.unitRate,
+          totalPrice: i.totalPrice,
+          sizeBreakdown: i.sizeBreakdown,
+          fabricDetails: i.fabricDetails,
+          priceBreakup,
+          customPriceFields,
+        };
+      }),
+      materialProvidedBy: order.materialProvidedBy,
+      materialCharges: order.materialCharges || 0,
+      materialReceivedDetails: order.materialReceivedDetails,
+      materials: order.materials,
       subtotal: order.subtotalAmount || order.totalAmount,
       shippingCharges: order.shippingCharges || 0,
       packingCharges: order.packingCharges || 0,
-      materialCharges: order.materialCharges || 0,
       gstAmount: order.gstAmount || 0,
+      discountAmount: discountAmount || 0,
       totalAmount: order.totalAmount,
       advancePaid: order.advancePayment || 0,
       balanceDue: order.remainingAmount || 0,
