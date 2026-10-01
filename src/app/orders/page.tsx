@@ -1321,15 +1321,12 @@ function OrdersContent() {
 
           <div className="space-y-3 pt-2 text-xs text-zinc-600 dark:text-zinc-400">
             <p>
-              Are you sure you want to soft-delete order{" "}
+              Are you sure you want to delete order{" "}
               <strong className="text-zinc-900 dark:text-zinc-100 font-mono">
                 {orderToDelete?.orderNumber}
               </strong>{" "}
               for <strong className="text-zinc-900 dark:text-zinc-100">{orderToDelete?.clientName}</strong>?
             </p>
-            <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 text-[11px] leading-relaxed text-zinc-500">
-              🛡️ <strong>Soft-Delete Guarantee:</strong> This order will not be permanently lost. It will be moved to <strong>Deleted Orders History</strong> with full audit trail, where it can be reviewed and restored anytime.
-            </div>
 
             <div className="space-y-1.5 pt-1">
               <Label htmlFor="delReason" className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
@@ -1358,18 +1355,17 @@ function OrdersContent() {
             </Button>
             <Button
               type="button"
-              variant="destructive"
               size="sm"
               disabled={isDeleting}
               onClick={handleConfirmDelete}
-              className="text-xs font-semibold gap-1.5 cursor-pointer bg-red-600 hover:bg-red-700"
+              className="text-xs font-semibold px-4 py-2 cursor-pointer bg-red-600 hover:bg-red-700 text-white shadow-sm inline-flex items-center gap-1.5"
             >
               {isDeleting ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
               ) : (
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-3.5 h-3.5 text-white" />
               )}
-              Move to Deleted History
+              <span>Move to Deleted History</span>
             </Button>
           </div>
         </DialogContent>
