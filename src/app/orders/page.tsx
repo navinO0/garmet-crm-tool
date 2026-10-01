@@ -33,7 +33,6 @@ import {
   RotateCcw,
   History,
   AlertTriangle,
-  Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BulkOrderDetailModal } from "@/components/bulk/BulkOrderDetailModal";
@@ -68,7 +67,7 @@ const STATUS_ORDER: OrderStatus[] = [
 function OrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { orders, activities, settings, updateOrderStatus, addPayment, softDeleteOrder, restoreOrder } = useProductionStore();
+    const { orders, activities, settings, updateOrderStatus, addPayment, softDeleteOrder, restoreOrder } = useProductionStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -619,7 +618,7 @@ function OrdersContent() {
                 <div
                   key={order.id}
                   onClick={() => setSelectedOrderId(order.id)}
-                  className={`p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/10 active:bg-zinc-100/50 cursor-pointer space-y-3 ${order.isDeleted ? 'opacity-70 bg-zinc-50/30' : ''}`}
+                  className="p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/10 active:bg-zinc-100/50 cursor-pointer space-y-3"
                 >
                   <div className="flex justify-between items-start">
                     <div>
@@ -781,24 +780,18 @@ function OrdersContent() {
             {/* Mobile card view for Bulk orders */}
             <div className="block md:hidden divide-y divide-zinc-100 dark:divide-zinc-800/80">
               {filteredBulkOrders.map((order) => (
-                <div key={order.id} className={`p-4 space-y-3 ${order.isDeleted ? 'opacity-70 bg-zinc-50/30' : ''}`}>
+                <div key={order.id} className="p-4 space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="font-bold text-sm text-zinc-900 dark:text-zinc-50">{order.orderNumber}</p>
                       <p className="text-xs text-zinc-550 font-semibold">{order.client?.name}</p>
                     </div>
-                    {order.isDeleted ? (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-red-50 text-red-700 border-red-200">
-                        Deleted
-                      </span>
-                    ) : (
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${order.status === 'Completed' || order.status === 'Delivered'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-blue-50 text-blue-700 border-blue-200'
-                        }`}>
-                        {order.status}
-                      </span>
-                    )}
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${order.status === 'Completed' || order.status === 'Delivered'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}>
+                      {order.status}
+                    </span>
                   </div>
                   <div className="flex justify-between text-xs text-zinc-500">
                     <span>Order Date: {new Date(order.createdAt).toLocaleDateString()}</span>
@@ -1314,7 +1307,6 @@ function OrdersContent() {
           }}
         />
       )}
-
       {/* Soft Delete Confirmation Dialog */}
       <Dialog open={deleteModalOpen} onOpenChange={(open) => !open && setDeleteModalOpen(false)}>
         <DialogContent className="max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl p-6">
