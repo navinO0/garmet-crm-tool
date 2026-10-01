@@ -29,6 +29,11 @@ import {
   Loader2,
   ExternalLink,
   MessageCircle,
+  Trash2,
+  RotateCcw,
+  History,
+  AlertTriangle,
+  Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BulkOrderDetailModal } from "@/components/bulk/BulkOrderDetailModal";
@@ -63,7 +68,7 @@ const STATUS_ORDER: OrderStatus[] = [
 function OrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { orders, activities, settings, updateOrderStatus, addPayment } = useProductionStore();
+  const { orders, activities, settings, updateOrderStatus, addPayment, softDeleteOrder, restoreOrder } = useProductionStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -73,6 +78,18 @@ function OrdersContent() {
   const [isLoadingBulk, setIsLoadingBulk] = useState<boolean>(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [showDeletedHistory, setShowDeletedHistory] = useState<boolean>(false);
+
+  // Soft delete modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
+  const [orderToDelete, setOrderToDelete] = useState<{
+    type: 'boutique' | 'bulk';
+    id: string;
+    orderNumber: string;
+    clientName: string;
+  } | null>(null);
+  const [deleteReason, setDeleteReason] = useState<string>("");
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const [selectedBulkOrder, setSelectedBulkOrder] = useState<any>(null);
   const [selectedBulkOrderForLifecycle, setSelectedBulkOrderForLifecycle] = useState<any>(null);
@@ -87,6 +104,67 @@ function OrdersContent() {
 
   // Status Form State
   const [statusNotes, setStatusNotes] = useState("");
+
+  const handleRequestDelete = (
+    type: 'boutique' | 'bulk',
+    id: string,
+    orderNumber: string,
+    clientName: string
+  ) => {
+    setOrderToDelete({ type, id, orderNumber, clientName });
+    setDeleteReason("");
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!orderToDelete) return;
+    setIsDeleting(true);
+    try {
+      if (orderToDelete.type === 'boutique') {
+        softDeleteOrder(orderToDelete.id, deleteReason.trim() || undefined);
+      } else {
+        const url = `/api/bulk-orders?id=${encodeURIComponent(orderToDelete.id)}${deleteReason.trim() ? `&reason=${encodeURIComponent(deleteReason.trim())}` : ''}`;
+        const res = await fetch(url, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          await fetchBulkOrders();
+          if (selectedBulkOrder?.id === orderToDelete.id) {
+            setSelectedBulkOrder(data.order);
+          }
+        }
+      }
+      setDeleteModalOpen(false);
+      setOrderToDelete(null);
+      setDeleteReason("");
+    } catch (err) {
+      console.error("Failed to soft delete order:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleRestore = async (type: 'boutique' | 'bulk', id: string) => {
+    try {
+      if (type === 'boutique') {
+        restoreOrder(id);
+      } else {
+        const res = await fetch('/api/bulk-orders', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'restore' }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          await fetchBulkOrders();
+          if (selectedBulkOrder?.id === id) {
+            setSelectedBulkOrder(data.order);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to restore order:", err);
+    }
+  };
 
   const fetchBulkOrders = async () => {
     try {
@@ -169,15 +247,28 @@ function OrdersContent() {
     }
   }, [searchParams, orders]);
 
+  const boutiqueDeletedCount = useMemo(() => orders.filter((o) => o.isDeleted).length, [orders]);
+  const bulkDeletedCount = useMemo(() => bulkOrders.filter((o) => o.isDeleted).length, [bulkOrders]);
+  const currentDeletedCount = ordersTab === 'boutique' ? boutiqueDeletedCount : bulkDeletedCount;
+
   // Filters for Boutique orders
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
+      const isDeleted = Boolean(o.isDeleted);
+      if (showDeletedHistory) {
+        if (!isDeleted) return false;
+      } else {
+        if (statusFilter !== "DELETED" && isDeleted) return false;
+      }
+
       const matchSearch =
         o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
         o.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         o.products.some((p) => p.product.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      const matchStatus = statusFilter === "ALL" || o.status === statusFilter;
+      const matchStatus =
+        statusFilter === "ALL" ||
+        (statusFilter === "DELETED" ? isDeleted : o.status === statusFilter);
 
       let matchDate = true;
       const orderDate = new Date(o.createdAt);
@@ -194,18 +285,27 @@ function OrdersContent() {
 
       return matchSearch && matchStatus && matchDate;
     });
-  }, [orders, searchQuery, statusFilter, startDate, endDate]);
+  }, [orders, searchQuery, statusFilter, startDate, endDate, showDeletedHistory]);
 
   // Filters for Bulk Stitching orders
   const filteredBulkOrders = useMemo(() => {
     return bulkOrders.filter((o) => {
+      const isDeleted = Boolean(o.isDeleted);
+      if (showDeletedHistory) {
+        if (!isDeleted) return false;
+      } else {
+        if (statusFilter !== "DELETED" && isDeleted) return false;
+      }
+
       const matchSearch =
         o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (o.client?.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (o.client?.businessName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         o.items.some((p: any) => p.itemDescription.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      const matchStatus = statusFilter === "ALL" || o.status === statusFilter;
+      const matchStatus =
+        statusFilter === "ALL" ||
+        (statusFilter === "DELETED" ? isDeleted : o.status === statusFilter);
 
       let matchDate = true;
       const orderDate = new Date(o.createdAt);
@@ -222,7 +322,7 @@ function OrdersContent() {
 
       return matchSearch && matchStatus && matchDate;
     });
-  }, [bulkOrders, searchQuery, statusFilter, startDate, endDate]);
+  }, [bulkOrders, searchQuery, statusFilter, startDate, endDate, showDeletedHistory]);
 
   const selectedOrder = useMemo(() => {
     return orders.find((o) => o.id === selectedOrderId) || null;
@@ -304,28 +404,60 @@ function OrdersContent() {
         </Link>
       </div>
 
-      {/* Tab Switcher */}
-      <div className="flex gap-2 p-1 bg-zinc-150 dark:bg-zinc-950/60 rounded-lg w-max border border-zinc-200 dark:border-zinc-800">
-        <button
-          onClick={() => setOrdersTab('boutique')}
-          className={`py-1.5 px-4 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${ordersTab === 'boutique'
-            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm font-bold animate-in fade-in duration-100'
-            : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+      {/* Tab Switcher & History Toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex gap-2 p-1 bg-zinc-150 dark:bg-zinc-950/60 rounded-lg w-max border border-zinc-200 dark:border-zinc-800">
+          <button
+            onClick={() => setOrdersTab('boutique')}
+            className={`py-1.5 px-4 rounded-md text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${ordersTab === 'boutique'
+              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm font-bold animate-in fade-in duration-100'
+              : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+              }`}
+          >
+            <Scissors className="w-3.5 h-3.5" />
+            Boutique Custom Orders
+          </button>
+          <button
+            onClick={() => setOrdersTab('bulk')}
+            className={`py-1.5 px-4 rounded-md text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${ordersTab === 'bulk'
+              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm font-bold animate-in fade-in duration-100'
+              : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+              }`}
+          >
+            <HardDrive className="w-3.5 h-3.5" />
+            Bulk Stitching Orders
+          </button>
+        </div>
+
+        {/* View Mode: Active vs Deleted History */}
+        <div className="flex items-center gap-1.5 p-1 bg-zinc-150 dark:bg-zinc-950/60 rounded-lg border border-zinc-200 dark:border-zinc-800 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setShowDeletedHistory(false)}
+            className={`py-1 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${!showDeletedHistory
+              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm font-bold'
+              : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
             }`}
-        >
-          <Scissors className="w-3.5 h-3.5" />
-          Boutique Custom Orders
-        </button>
-        <button
-          onClick={() => setOrdersTab('bulk')}
-          className={`py-1.5 px-4 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${ordersTab === 'bulk'
-            ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm font-bold animate-in fade-in duration-100'
-            : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100'
+          >
+            Active Orders
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDeletedHistory(true)}
+            className={`py-1 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${showDeletedHistory
+              ? 'bg-red-600 text-white shadow-sm font-bold'
+              : 'text-zinc-500 hover:text-red-600 dark:hover:text-red-400'
             }`}
-        >
-          <HardDrive className="w-3.5 h-3.5" />
-          Bulk Stitching Orders
-        </button>
+          >
+            <History className="w-3.5 h-3.5" />
+            Deleted History
+            {currentDeletedCount > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${showDeletedHistory ? 'bg-white/20 text-white' : 'bg-red-100 dark:bg-red-950/50 text-red-600'}`}>
+                {currentDeletedCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Control bar: Search and Filter */}
@@ -365,6 +497,7 @@ function OrdersContent() {
             </SelectTrigger>
             <SelectContent className="max-h-56">
               <SelectItem value="ALL">All Statuses</SelectItem>
+              <SelectItem value="DELETED" className="text-red-600 font-semibold">Deleted History</SelectItem>
               {ordersTab === 'boutique' ? (
                 STATUS_ORDER.map((status) => (
                   <SelectItem key={status} value={status} className="text-xs">
@@ -404,6 +537,7 @@ function OrdersContent() {
                     <TableHead className="font-bold text-zinc-500">Total Price</TableHead>
                     <TableHead className="font-bold text-zinc-500">Production Status</TableHead>
                     <TableHead className="font-bold text-zinc-500">Payment</TableHead>
+                    <TableHead className="font-bold text-zinc-500 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -418,7 +552,7 @@ function OrdersContent() {
                       <TableRow
                         key={order.id}
                         onClick={() => setSelectedOrderId(order.id)}
-                        className="cursor-pointer hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20"
+                        className={`cursor-pointer hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 ${order.isDeleted ? 'opacity-70 bg-zinc-50/40 dark:bg-zinc-950/20' : ''}`}
                       >
                         <TableCell className="font-bold text-zinc-900 dark:text-zinc-100">
                           {order.orderNumber}
@@ -440,10 +574,37 @@ function OrdersContent() {
                           {formatCurrency(order.estimate.total)}
                         </TableCell>
                         <TableCell>
-                          <StatusBadge status={order.status} type="order" />
+                          {order.isDeleted ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/50">
+                              <Trash2 className="w-3 h-3" /> Soft-Deleted
+                            </span>
+                          ) : (
+                            <StatusBadge status={order.status} type="order" />
+                          )}
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={order.paymentStatus} type="payment" />
+                        </TableCell>
+                        <TableCell className="text-right space-x-1" onClick={(e) => e.stopPropagation()}>
+                          {order.isDeleted ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRestore('boutique', order.id)}
+                              className="h-8 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" /> Restore
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRequestDelete('boutique', order.id, order.orderNumber, order.customerName)}
+                              className="h-8 text-[11px] font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200 dark:border-red-900/40 inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Delete
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -458,7 +619,7 @@ function OrdersContent() {
                 <div
                   key={order.id}
                   onClick={() => setSelectedOrderId(order.id)}
-                  className="p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/10 active:bg-zinc-100/50 cursor-pointer space-y-3"
+                  className={`p-4 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/10 active:bg-zinc-100/50 cursor-pointer space-y-3 ${order.isDeleted ? 'opacity-70 bg-zinc-50/30' : ''}`}
                 >
                   <div className="flex justify-between items-start">
                     <div>
@@ -476,9 +637,35 @@ function OrdersContent() {
 
                   <div className="flex justify-between items-center pt-1 border-t border-zinc-100 dark:border-zinc-800/50">
                     <span className="text-[10px] text-zinc-400 font-medium">Due: {order.deliveryDate}</span>
-                    <div className="flex space-x-1.5">
-                      <StatusBadge status={order.status} type="order" />
-                      <StatusBadge status={order.paymentStatus} type="payment" />
+                    <div className="flex items-center space-x-1.5" onClick={(e) => e.stopPropagation()}>
+                      {order.isDeleted ? (
+                        <>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+                            <Trash2 className="w-3 h-3" /> Deleted
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRestore('boutique', order.id)}
+                            className="h-7 text-[10px] font-semibold text-emerald-600 border border-emerald-200 inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <RotateCcw className="w-3 h-3" /> Restore
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <StatusBadge status={order.status} type="order" />
+                          <StatusBadge status={order.paymentStatus} type="payment" />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRequestDelete('boutique', order.id, order.orderNumber, order.customerName)}
+                            className="h-7 text-[10px] font-semibold text-red-600 border border-red-200 inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" /> Delete
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -514,7 +701,7 @@ function OrdersContent() {
                 </TableHeader>
                 <TableBody>
                   {filteredBulkOrders.map((order) => (
-                    <TableRow key={order.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20">
+                    <TableRow key={order.id} className={`hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 ${order.isDeleted ? 'opacity-70 bg-zinc-50/40 dark:bg-zinc-950/20' : ''}`}>
                       <TableCell className="font-bold text-xs text-zinc-900 dark:text-zinc-100 py-3.5">
                         {order.orderNumber}
                       </TableCell>
@@ -532,14 +719,20 @@ function OrdersContent() {
                         {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </TableCell>
                       <TableCell className="text-xs text-center py-3.5">
-                        <span className={`inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${order.status === 'Completed' || order.status === 'Delivered'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/50'
-                          : order.status === 'Extended'
-                            ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800/50'
-                            : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800/50'
-                          }`}>
-                          {order.status}
-                        </span>
+                        {order.isDeleted ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800/50">
+                            <Trash2 className="w-3 h-3" /> Soft-Deleted
+                          </span>
+                        ) : (
+                          <span className={`inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${order.status === 'Completed' || order.status === 'Delivered'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/50'
+                            : order.status === 'Extended'
+                              ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800/50'
+                              : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800/50'
+                            }`}>
+                            {order.status}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-xs text-right py-3.5 space-x-1">
                         <Button
@@ -550,23 +743,32 @@ function OrdersContent() {
                         >
                           <ExternalLink className="w-3.5 h-3.5" /> Details
                         </Button>
-                        {/* WhatsApp button — temporarily disabled
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => sendBulkViaWhatsApp(order)}
-                          className="h-8 text-[11px] font-bold bg-[#25D366] hover:bg-[#1ebe5d] text-white inline-flex items-center gap-1 cursor-pointer border-0"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
-                        </Button>
-                        */}
-                        {order.status !== 'Delivered' && (
+                        {!order.isDeleted && order.status !== 'Delivered' && (
                           <Button
                             size="sm"
                             onClick={() => setSelectedBulkOrderForLifecycle(order)}
                             className="h-8 text-[11px] font-semibold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 inline-flex items-center gap-1 cursor-pointer"
                           >
                             <Edit className="w-3.5 h-3.5" /> Status
+                          </Button>
+                        )}
+                        {order.isDeleted ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRestore('bulk', order.id)}
+                            className="h-8 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" /> Restore
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRequestDelete('bulk', order.id, order.orderNumber, order.client?.name || 'Client')}
+                            className="h-8 text-[11px] font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200 dark:border-red-900/40 inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Delete
                           </Button>
                         )}
                       </TableCell>
@@ -579,18 +781,24 @@ function OrdersContent() {
             {/* Mobile card view for Bulk orders */}
             <div className="block md:hidden divide-y divide-zinc-100 dark:divide-zinc-800/80">
               {filteredBulkOrders.map((order) => (
-                <div key={order.id} className="p-4 space-y-3">
+                <div key={order.id} className={`p-4 space-y-3 ${order.isDeleted ? 'opacity-70 bg-zinc-50/30' : ''}`}>
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="font-bold text-sm text-zinc-900 dark:text-zinc-50">{order.orderNumber}</p>
                       <p className="text-xs text-zinc-550 font-semibold">{order.client?.name}</p>
                     </div>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${order.status === 'Completed' || order.status === 'Delivered'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
-                      }`}>
-                      {order.status}
-                    </span>
+                    {order.isDeleted ? (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-red-50 text-red-700 border-red-200">
+                        Deleted
+                      </span>
+                    ) : (
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${order.status === 'Completed' || order.status === 'Delivered'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}>
+                        {order.status}
+                      </span>
+                    )}
                   </div>
                   <div className="flex justify-between text-xs text-zinc-500">
                     <span>Order Date: {new Date(order.createdAt).toLocaleDateString()}</span>
@@ -598,7 +806,7 @@ function OrdersContent() {
                       {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(order.totalAmount)}
                     </span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       variant="outline"
@@ -607,22 +815,32 @@ function OrdersContent() {
                     >
                       <ExternalLink className="w-3 h-3 mr-1" /> View details
                     </Button>
-                    {/* WhatsApp button — temporarily disabled
-                    <Button
-                      size="sm"
-                      className="flex-1 text-[11px] h-8 bg-[#25D366] hover:bg-[#1ebe5d] text-white border-0"
-                      onClick={() => sendBulkViaWhatsApp(order)}
-                    >
-                      <MessageCircle className="w-3 h-3 mr-1" /> WhatsApp
-                    </Button>
-                    */}
-                    {order.status !== 'Delivered' && (
+                    {!order.isDeleted && order.status !== 'Delivered' && (
                       <Button
                         size="sm"
                         className="flex-1 text-[11px] h-8"
                         onClick={() => setSelectedBulkOrderForLifecycle(order)}
                       >
                         <Edit className="w-3 h-3 mr-1" /> Update status
+                      </Button>
+                    )}
+                    {order.isDeleted ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 text-[11px] h-8 text-emerald-600 border-emerald-200"
+                        onClick={() => handleRestore('bulk', order.id)}
+                      >
+                        <RotateCcw className="w-3 h-3 mr-1" /> Restore
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 text-[11px] h-8 text-red-600 border-red-200"
+                        onClick={() => handleRequestDelete('bulk', order.id, order.orderNumber, order.client?.name || 'Client')}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" /> Delete
                       </Button>
                     )}
                   </div>
@@ -694,18 +912,46 @@ function OrdersContent() {
                       <Printer className="h-3.5 w-3.5" /> Invoice
                     </Button>
                   </Link>
-                  {/* WhatsApp button — temporarily disabled
-                  <Button
-                    size="sm"
-                    onClick={() => sendBoutiqueViaWhatsApp(selectedOrder)}
-                    className="h-8 text-xs font-bold bg-[#25D366] hover:bg-[#1ebe5d] text-white shrink-0 gap-1.5 border-0 ml-auto"
-                  >
-                    <MessageCircle className="h-3.5 w-3.5" /> Send via WhatsApp
-                  </Button>
-                  */}
+                  {selectedOrder.isDeleted ? (
+                    <Button
+                      size="sm"
+                      onClick={() => handleRestore('boutique', selectedOrder.id)}
+                      className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shrink-0 cursor-pointer ml-auto"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" /> Restore Order
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRequestDelete('boutique', selectedOrder.id, selectedOrder.orderNumber, selectedOrder.customerName)}
+                      className="h-8 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 border-red-200 dark:border-red-900/50 shrink-0 gap-1.5 cursor-pointer ml-auto"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete Order
+                    </Button>
+                  )}
                 </div>
               </DialogHeader>
 
+              {selectedOrder.isDeleted && (
+                <div className="bg-red-50 dark:bg-red-950/40 border-b border-red-200 dark:border-red-900/50 px-4 sm:px-6 py-2.5 flex items-center justify-between text-xs text-red-700 dark:text-red-300">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                    <span>
+                      This order is <strong>soft-deleted</strong> and archived in history.
+                      {selectedOrder.deletedAt && ` (Deleted on ${new Date(selectedOrder.deletedAt).toLocaleDateString()} at ${new Date(selectedOrder.deletedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`}
+                      {selectedOrder.deletedReason && ` — Reason: "${selectedOrder.deletedReason}"`}
+                    </span>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleRestore('boutique', selectedOrder.id)}
+                    className="h-7 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 ml-3 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3 mr-1" /> Restore
+                  </Button>
+                </div>
+              )}
 
               {/* Single Scrollable Content */}
               <div className="flex-1 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800/80">
@@ -1052,6 +1298,8 @@ function OrdersContent() {
           order={selectedBulkOrder}
           isOpen={!!selectedBulkOrder}
           onClose={() => setSelectedBulkOrder(null)}
+          onDelete={(ord: any) => handleRequestDelete('bulk', ord.id, ord.orderNumber, ord.client?.name || 'Client')}
+          onRestore={(ord: any) => handleRestore('bulk', ord.id)}
         />
       )}
 
@@ -1066,6 +1314,74 @@ function OrdersContent() {
           }}
         />
       )}
+
+      {/* Soft Delete Confirmation Dialog */}
+      <Dialog open={deleteModalOpen} onOpenChange={(open) => !open && setDeleteModalOpen(false)}>
+        <DialogContent className="max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl p-6">
+          <DialogHeader className="space-y-2">
+            <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-950/50 flex items-center justify-center text-red-600">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <DialogTitle className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+              Move Order to Deleted History?
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 pt-2 text-xs text-zinc-600 dark:text-zinc-400">
+            <p>
+              Are you sure you want to soft-delete order{" "}
+              <strong className="text-zinc-900 dark:text-zinc-100 font-mono">
+                {orderToDelete?.orderNumber}
+              </strong>{" "}
+              for <strong className="text-zinc-900 dark:text-zinc-100">{orderToDelete?.clientName}</strong>?
+            </p>
+            <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 text-[11px] leading-relaxed text-zinc-500">
+              🛡️ <strong>Soft-Delete Guarantee:</strong> This order will not be permanently lost. It will be moved to <strong>Deleted Orders History</strong> with full audit trail, where it can be reviewed and restored anytime.
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              <Label htmlFor="delReason" className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                Reason for Deletion (Optional)
+              </Label>
+              <Input
+                id="delReason"
+                placeholder="e.g. Order cancelled by customer, duplicate entry..."
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                className="h-9 bg-zinc-50 dark:bg-zinc-950 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-zinc-150 dark:border-zinc-800 mt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isDeleting}
+              onClick={() => setDeleteModalOpen(false)}
+              className="text-xs cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={isDeleting}
+              onClick={handleConfirmDelete}
+              className="text-xs font-semibold gap-1.5 cursor-pointer bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5" />
+              )}
+              Move to Deleted History
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

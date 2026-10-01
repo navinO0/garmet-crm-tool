@@ -326,3 +326,71 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const reason = searchParams.get('reason') || 'Soft-deleted by user';
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Order ID is required' }, { status: 400 });
+    }
+
+    const order = await db.bulkOrder.update({
+      where: { id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        deleteReason: reason,
+      },
+      include: {
+        client: true,
+        items: true,
+        agreement: true,
+        invoice: true,
+      },
+    });
+
+    return NextResponse.json({ success: true, message: 'Bulk order moved to history archive', order });
+  } catch (error: any) {
+    console.error('Soft delete bulk order error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, action } = body;
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Order ID is required' }, { status: 400 });
+    }
+
+    if (action === 'restore') {
+      const order = await db.bulkOrder.update({
+        where: { id },
+        data: {
+          isDeleted: false,
+          deletedAt: null,
+          deleteReason: null,
+        },
+        include: {
+          client: true,
+          items: true,
+          agreement: true,
+          invoice: true,
+        },
+      });
+
+      return NextResponse.json({ success: true, message: 'Bulk order restored to active', order });
+    }
+
+    return NextResponse.json({ success: false, error: 'Invalid action provided' }, { status: 400 });
+  } catch (error: any) {
+    console.error('Restore bulk order error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+

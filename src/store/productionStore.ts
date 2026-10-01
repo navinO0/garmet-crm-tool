@@ -49,6 +49,8 @@ interface ProductionStore {
   ) => Order;
   updateOrderStatus: (id: string, status: OrderStatus, notes?: string) => void;
   addPayment: (orderId: string, amount: number, method: Payment["method"], notes?: string) => void;
+  softDeleteOrder: (id: string, reason?: string) => void;
+  restoreOrder: (id: string) => void;
 
   // Inventory actions
   addInventoryItem: (item: Omit<InventoryItem, "id" | "lastRestocked">) => void;
@@ -345,6 +347,76 @@ export const useProductionStore = create<ProductionStore>()((set, get) => ({
       return {
         payments: updatedPayments,
         orders: updatedOrders,
+      };
+    });
+  },
+
+  softDeleteOrder: (id, reason) => {
+    set((state) => {
+      const targetOrder = state.orders.find((o) => o.id === id);
+      if (!targetOrder) return {};
+
+      const now = new Date().toISOString();
+      const updatedOrders = state.orders.map((o) => {
+        if (o.id === id) {
+          return {
+            ...o,
+            isDeleted: true,
+            deletedAt: now,
+            deletedReason: reason || "Soft-deleted by user",
+          };
+        }
+        return o;
+      });
+
+      const newActivity: ProductionActivity = {
+        id: `act-${Date.now()}`,
+        orderId: id,
+        orderNumber: targetOrder.orderNumber,
+        status: targetOrder.status,
+        updatedBy: "Supervisor / Admin",
+        timestamp: now,
+        notes: `Order moved to Trash/History (Soft Delete).${reason ? ` Reason: ${reason}` : ""}`,
+      };
+
+      return {
+        orders: updatedOrders,
+        activities: [newActivity, ...state.activities],
+      };
+    });
+  },
+
+  restoreOrder: (id) => {
+    set((state) => {
+      const targetOrder = state.orders.find((o) => o.id === id);
+      if (!targetOrder) return {};
+
+      const now = new Date().toISOString();
+      const updatedOrders = state.orders.map((o) => {
+        if (o.id === id) {
+          return {
+            ...o,
+            isDeleted: false,
+            deletedAt: undefined,
+            deletedReason: undefined,
+          };
+        }
+        return o;
+      });
+
+      const newActivity: ProductionActivity = {
+        id: `act-${Date.now()}`,
+        orderId: id,
+        orderNumber: targetOrder.orderNumber,
+        status: targetOrder.status,
+        updatedBy: "Supervisor / Admin",
+        timestamp: now,
+        notes: "Order restored from Trash/History back to active status.",
+      };
+
+      return {
+        orders: updatedOrders,
+        activities: [newActivity, ...state.activities],
       };
     });
   },

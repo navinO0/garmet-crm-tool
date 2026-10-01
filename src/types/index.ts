@@ -241,6 +241,9 @@ export interface Order {
   notes?: string;
   createdAt: string;
   bom?: BillOfMaterials;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedReason?: string;
 }
 
 export interface Payment {

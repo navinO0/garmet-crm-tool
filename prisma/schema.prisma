@@ -51,6 +51,9 @@ model BulkOrder {
   labelInitials           String?
   createdAt               DateTime        @default(now())
   updatedAt               DateTime        @updatedAt
+  isDeleted               Boolean         @default(false)
+  deletedAt               DateTime?
+  deleteReason            String?
   items                   BulkOrderItem[]
   agreement               Agreement?
   invoice                 Invoice?
