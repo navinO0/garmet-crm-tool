@@ -907,7 +907,7 @@ export default function NewOrder() {
 
     const items = products.map((p) => ({
       itemDescription: p.product || "Garment Item",
-      category: p.stitchType,
+      category: p.stitchType || "Custom",
       quantity: p.quantity,
       unitRate: p.price,
       totalPrice: p.price * p.quantity,

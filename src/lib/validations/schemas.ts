@@ -25,7 +25,10 @@ export type ClientInput = z.infer<typeof clientSchema>;
 // 2. Bulk Order Item Schema
 export const bulkOrderItemSchema = z.object({
   itemDescription: z.string().trim().min(1, "Item description is required"),
-  category: z.string().trim().min(1, "Category is required"),
+  category: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? "Custom" : String(val).trim()),
+    z.string().trim().default("Custom")
+  ),
   quantity: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? NaN : Number(val)),
     z.number().int("Quantity must be an integer").min(1, "Quantity must be at least 1")

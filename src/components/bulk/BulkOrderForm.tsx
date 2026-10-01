@@ -100,7 +100,7 @@ export const BulkOrderForm: React.FC<BulkOrderFormProps> = ({ data, step = 2, on
   const addItem = () => {
     const newItem: OrderItemData = {
       itemDescription: '',
-      category: '',
+      category: 'Custom',
       quantity: 0,
       unitRate: 0,
       fabricDetails: '',
@@ -268,6 +268,7 @@ export const BulkOrderForm: React.FC<BulkOrderFormProps> = ({ data, step = 2, on
       ...updated[index],
       outfitStyleId: undefined,
       itemDescription: '',
+      category: updated[index].category || 'Custom',
     };
     onChange({ items: updated });
   };
@@ -278,6 +279,7 @@ export const BulkOrderForm: React.FC<BulkOrderFormProps> = ({ data, step = 2, on
       ...updated[index],
       outfitStyleId: undefined,
       itemDescription: val,
+      category: updated[index].category || 'Custom',
     };
     onChange({ items: updated });
   };
@@ -366,8 +368,8 @@ export const BulkOrderForm: React.FC<BulkOrderFormProps> = ({ data, step = 2, on
                   )}
                 </div>
 
-                {/* Garment Basic Info - 2 Columns on Mobile */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                {/* Garment Basic Info - Responsive Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
                   <div className="col-span-2 sm:col-span-2">
                     <label className="block text-[11px] font-medium text-zinc-700 dark:text-zinc-300 mb-0.5">
                       Style / Description *
@@ -383,6 +385,29 @@ export const BulkOrderForm: React.FC<BulkOrderFormProps> = ({ data, step = 2, on
                       placeholder="e.g. Lehenga Choli Set"
                       priceMode="bulk"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-zinc-700 dark:text-zinc-300 mb-0.5">
+                      Category
+                    </label>
+                    <input
+                      type="text"
+                      list={`categories-list-${index}`}
+                      value={item.category || "Custom"}
+                      onChange={(e) => updateItem(index, 'category', e.target.value)}
+                      placeholder="e.g. Custom, Ethnic"
+                      className="w-full px-2 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-md text-xs font-medium text-zinc-900 dark:text-zinc-100"
+                    />
+                    <datalist id={`categories-list-${index}`}>
+                      <option value="Custom" />
+                      <option value="Ethnic Wear" />
+                      <option value="Bridal / Heavy" />
+                      <option value="Western / Casual" />
+                      <option value="Indo-Western" />
+                      <option value="Blouse / Crop Top" />
+                      <option value="Uniforms" />
+                    </datalist>
                   </div>
 
                   <div>

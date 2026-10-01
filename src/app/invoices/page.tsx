@@ -148,8 +148,8 @@ function InvoicesContent() {
           ? `Payment Terms: ${formatCurrency((invoiceOrder as any).advanceCustomAmount || (invoiceOrder.estimate.total * 0.5))} Advance`
           : `Payment Terms: ${(invoiceOrder as any).advancePercentage || 50}% Advance`,
         items: invoiceOrder.products.map((p) => {
-          let priceBreakup = null;
-          let customPriceFields = null;
+          let priceBreakup = undefined;
+          let customPriceFields = undefined;
           if ((p as any).priceBreakupJson) {
             try {
               const parsed = JSON.parse((p as any).priceBreakupJson);
@@ -189,7 +189,7 @@ function InvoicesContent() {
         balanceDue,
         invoiceDate: new Date(invoiceOrder.createdAt).toLocaleDateString(),
         isBoutique: !!invoiceOrder.measurements && (!!invoiceOrder.measurements.chest || !!invoiceOrder.measurements.waist || !!invoiceOrder.measurements.standardSize),
-        sizeChartEnabled: settings.sizeChartEnabled,
+        sizeChartEnabled: (settings as any).sizeChartEnabled || false,
       });
 
       const sizeChartHtml = generateSizeChartHTML({

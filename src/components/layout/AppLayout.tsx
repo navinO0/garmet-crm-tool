@@ -14,6 +14,7 @@ import {
   BarChart3,
   Calendar,
   Settings,
+  LogOut,
   Menu,
   Bell,
   Search,
@@ -54,6 +55,16 @@ const navigation = [
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.push("/login");
+      router.refresh();
+    } catch (err) {
+      router.push("/login");
+    }
+  };
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -234,6 +245,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   );
 };
 
+  if (pathname === "/login") {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex overflow-hidden bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 font-sans transition-colors duration-300"
       style={{ height: '100dvh' }}
@@ -263,6 +278,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <Settings className="mr-3 h-5 w-5 flex-shrink-0" />
                 Settings
               </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setSidebarOpen(false);
+                  handleLogout();
+                }}
+                className="w-full group flex items-center rounded-md px-3 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left"
+              >
+                <LogOut className="mr-3 h-5 w-5 flex-shrink-0" />
+                Sign Out
+              </button>
             </div>
           </div>
         </SheetContent>
@@ -300,6 +326,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <Settings className={cn("h-5 w-5 flex-shrink-0", isCollapsed ? "" : "mr-3")} />
               {!isCollapsed && <span>Settings</span>}
             </Link>
+
+            <button
+              onClick={handleLogout}
+              title="Sign Out"
+              className={cn(
+                "w-full flex items-center rounded-md px-3 py-2 text-sm font-medium text-zinc-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors",
+                isCollapsed ? "justify-center" : "justify-start"
+              )}
+            >
+              <LogOut className={cn("h-4 w-4 flex-shrink-0 text-red-500", isCollapsed ? "" : "mr-3")} />
+              {!isCollapsed && <span className="text-xs">Sign Out</span>}
+            </button>
 
             <button
               onClick={handleToggleSidebar}
@@ -378,6 +416,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-zinc-900"></span>
               )}
             </Button>
+
+            {/* User Profile & Logout Button */}
+            <div className="flex items-center gap-1.5 pl-1.5 sm:pl-2 border-l border-zinc-200 dark:border-zinc-800">
+              <div className="hidden md:flex flex-col text-right">
+                <span className="text-[11px] font-bold text-zinc-900 dark:text-zinc-100 leading-none">
+                  Admin
+                </span>
+                <span className="text-[9px] text-zinc-400 leading-tight">
+                  Manager
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                title="Sign Out"
+                className="h-8 px-2 text-xs text-zinc-600 dark:text-zinc-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 gap-1.5 border border-zinc-200 dark:border-zinc-800"
+              >
+                <LogOut className="h-3.5 w-3.5 text-zinc-500" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
+            </div>
           </div>
         </header>
 

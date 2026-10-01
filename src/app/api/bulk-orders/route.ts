@@ -136,7 +136,7 @@ export async function POST(request: Request) {
 
       return {
         itemDescription: item.itemDescription || 'Garment Item',
-        category: item.category || 'General',
+        category: item.category?.trim() || 'Custom',
         outfitStyleId: item.outfitStyleId || null,
         quantity: qty,
         unitRate: rate,
