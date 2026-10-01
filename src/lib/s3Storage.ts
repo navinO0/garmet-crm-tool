@@ -31,6 +31,10 @@ export async function uploadInvoiceToS3(invoiceNumber: string, htmlContent: stri
   const filename = `INVOICE_${invoiceNumber}_${Date.now()}.html`;
   const key = `invoices/${filename}`;
 
+  if (!accessKeyId || !secretAccessKey) {
+    return await bucketStorage.saveInvoice(invoiceNumber, htmlContent);
+  }
+
   try {
     const command = new PutObjectCommand({
       Bucket: bucket,
@@ -58,6 +62,10 @@ export async function uploadInvoiceToS3(invoiceNumber: string, htmlContent: stri
 export async function uploadAgreementToS3(orderNumber: string, htmlContent: string): Promise<UploadResult> {
   const filename = `AGREEMENT_${orderNumber}_${Date.now()}.html`;
   const key = `agreements/${filename}`;
+
+  if (!accessKeyId || !secretAccessKey) {
+    return await bucketStorage.saveAgreement(orderNumber, htmlContent);
+  }
 
   try {
     const command = new PutObjectCommand({

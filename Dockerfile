@@ -39,6 +39,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV NODE_OPTIONS="--max-old-space-size=384"
 
 # Create non-root system user for container security
 RUN addgroup --system --gid 1001 nodejs && \
