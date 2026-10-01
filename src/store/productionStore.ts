@@ -92,7 +92,7 @@ const defaultSettings: CompanySettings = {
   phone: "+91 9063643342",
   address: "Shop No 1, Jal Vayu Vihar, Kukatpally, backside of community office building, Hyderabad, Telangana, India (500085)",
   contactPerson: "Divya",
-  supportEmail: "raadhelabel@gmail.com",
+  supportEmail: "radhelabel@gmail.com",
   logoUrl: "",
   companySignature: "",
   companySignatoryName: "RAADHE LABEL part of RADHE VASTRAZ",

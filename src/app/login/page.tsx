@@ -66,7 +66,7 @@ function LoginForm() {
           <Scissors className="h-7 w-7" />
         </div>
         <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 font-serif">
-          Raadhe Label
+          Radhe Label
         </h1>
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           Garment Production &amp; Order Management System

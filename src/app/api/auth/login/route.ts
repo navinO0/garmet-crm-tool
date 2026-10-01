@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     // Generate signed session token
     const token = await createSessionToken({
       username: username.trim(),
-      name: "Raadhe Production Manager",
+      name: "Radhe Production Manager",
       role: "admin",
     });
 
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       success: true,
       user: {
         username: username.trim(),
-        name: "Raadhe Production Manager",
+        name: "Radhe Production Manager",
         role: "admin",
       },
     });

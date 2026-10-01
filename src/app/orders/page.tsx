@@ -67,7 +67,7 @@ const STATUS_ORDER: OrderStatus[] = [
 function OrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-    const { orders, activities, settings, updateOrderStatus, addPayment, softDeleteOrder, restoreOrder } = useProductionStore();
+  const { orders, activities, settings, updateOrderStatus, addPayment, softDeleteOrder, restoreOrder } = useProductionStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");

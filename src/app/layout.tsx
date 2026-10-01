@@ -19,11 +19,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
 
   title: {
-    default: "Raadhe Label — Garment Production & Order Management",
-    template: "%s | Raadhe Label",
+    default: "Radhe Label — Garment Production & Order Management",
+    template: "%s | Radhe Label",
   },
   description:
-    "Raadhe Label Production System — Manage bulk garment orders, boutique tailoring, client profiles, invoices, agreements, shop floor, and HRMS from a single platform.",
+    "Radhe Label Production System — Manage bulk garment orders, boutique tailoring, client profiles, invoices, agreements, shop floor, and HRMS from a single platform.",
   keywords: [
     "garment production system",
     "bulk stitching management",
@@ -31,13 +31,13 @@ export const metadata: Metadata = {
     "tailor management software",
     "fashion production ERP",
     "invoice generator tailoring",
-    "Raadhe Label",
+    "Radhe Label",
     "Radhe Vastraz",
   ],
-  authors: [{ name: "Raadhe Label — Radhe Vastraz" }],
-  creator: "Raadhe Label",
+  authors: [{ name: "Radhe Label — Radhe Vastraz" }],
+  creator: "Radhe Label",
   publisher: "Radhe Vastraz",
-  applicationName: "Raadhe Label Production System",
+  applicationName: "Radhe Label Production System",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
@@ -48,17 +48,17 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    siteName: "Raadhe Label Production System",
-    title: "Raadhe Label — Garment Production & Order Management",
+    siteName: "Radhe Label Production System",
+    title: "Radhe Label — Garment Production & Order Management",
     description:
       "End-to-end garment production management: bulk orders, boutique tailoring, clients, invoices, payments, shop floor tracking, and HRMS.",
-    images: [{ url: "/icon.png", width: 512, height: 512, alt: "Raadhe Label" }],
+    images: [{ url: "/icon.png", width: 512, height: 512, alt: "Radhe Label" }],
   },
   twitter: {
     card: "summary",
-    title: "Raadhe Label — Production System",
+    title: "Radhe Label — Production System",
     description:
-      "Bulk stitching & boutique order management for Raadhe Label part of Radhe Vastraz.",
+      "Bulk stitching & boutique order management for Radhe Label part of Radhe Vastraz.",
     images: ["/icon.png"],
   },
   robots: {

@@ -1,7 +1,7 @@
 // Production System Authentication & Session Utilities
 // Uses standard Web Crypto API (supported in Node.js & Next.js Edge Middleware)
 
-export const SESSION_COOKIE_NAME = "raadhe_prod_session";
+export const SESSION_COOKIE_NAME = "radhe_prod_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 // Default credentials - can be overridden via environment variables
