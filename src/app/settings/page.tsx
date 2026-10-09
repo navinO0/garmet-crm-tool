@@ -35,6 +35,9 @@ export default function SettingsPage() {
   const [companySignatoryName, setCompanySignatoryName] = useState(settings.companySignatoryName || 'RAADHE LABEL part of RADHE VASTRAZ');
   const [companyDesignation, setCompanyDesignation] = useState(settings.companyDesignation || 'Authorized Signatory & Managing Director');
   const [companySignature, setCompanySignature] = useState(settings.companySignature || '');
+  const [companyAddress, setCompanyAddress] = useState(settings.address || '');
+  const [companyEmail, setCompanyEmail] = useState(settings.email || '');
+  const [companyPhone, setCompanyPhone] = useState(settings.phone || '');
 
   const [outfitStyles, setOutfitStyles] = useState<any[]>([]);
   const [customSizes, setCustomSizes] = useState<any[]>([]);
@@ -114,6 +117,9 @@ export default function SettingsPage() {
       if (settings.companySignatoryName) setCompanySignatoryName(settings.companySignatoryName);
       if (settings.companyDesignation) setCompanyDesignation(settings.companyDesignation);
       if (settings.companySignature !== undefined) setCompanySignature(settings.companySignature);
+      if (settings.address !== undefined) setCompanyAddress(settings.address);
+      if (settings.email !== undefined) setCompanyEmail(settings.email);
+      if (settings.phone !== undefined) setCompanyPhone(settings.phone);
     }
   }, [settings]);
 
@@ -143,8 +149,11 @@ export default function SettingsPage() {
         companySignatoryName,
         companyDesignation,
         companySignature,
+        address: companyAddress,
+        email: companyEmail,
+        phone: companyPhone,
       });
-      toast.success('Company profile and official digital signature saved successfully!');
+      toast.success('Company profile, address, and signature saved successfully!');
     } catch (err: any) {
       toast.error(err.message || 'Failed to save company profile');
     } finally {
@@ -590,6 +599,50 @@ export default function SettingsPage() {
                   className="text-xs"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Email Address <span className="text-zinc-400 font-normal">(Optional)</span>
+                </label>
+                <Input
+                  type="email"
+                  value={companyEmail}
+                  onChange={(e) => setCompanyEmail(e.target.value)}
+                  placeholder="e.g. radhevastraz@gmail.com"
+                  className="text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Contact Phone
+                </label>
+                <Input
+                  type="text"
+                  value={companyPhone}
+                  onChange={(e) => setCompanyPhone(e.target.value)}
+                  placeholder="e.g. +91 9063643342"
+                  className="text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                Company Official Address
+              </label>
+              <textarea
+                rows={2}
+                value={companyAddress}
+                onChange={(e) => setCompanyAddress(e.target.value)}
+                placeholder="Enter complete company address for invoices, billing, and contracts..."
+                className="w-full px-3 py-2 text-xs rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              <p className="text-[10px] text-zinc-400 mt-1">
+                This address will appear automatically on PDF invoices, bulk production job sheets, and client agreements.
+              </p>
             </div>
 
             {/* Signature Upload Box */}

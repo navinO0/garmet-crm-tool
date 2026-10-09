@@ -269,7 +269,7 @@ export interface ProductionActivity {
 
 export interface CompanySettings {
   companyName: string;
-  email: string;
+  email?: string;
   phone: string;
   address: string;
   contactPerson?: string;

@@ -65,7 +65,7 @@ interface CustomerFormValues {
 // Zod Validation Schema for Customer Add/Edit
 const customerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
+  email: z.string().email("Invalid email address").or(z.literal("")).optional(),
   phone: z.string().min(6, "Phone must be at least 6 characters"),
   company: z.string().optional(),
   address: z.string().min(5, "Address must be at least 5 characters"),
@@ -949,7 +949,7 @@ function CustomersContent() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-zinc-450">Email Address *</Label>
+                    <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-zinc-450">Email Address (Optional)</Label>
                     <Input
                       id="email"
                       type="email"

@@ -138,7 +138,7 @@ export type PaymentInput = z.infer<typeof paymentSchema>;
 // 7. Company Settings Schema
 export const settingsSchema = z.object({
   companyName: z.string().trim().min(2, "Company name must be at least 2 characters"),
-  email: z.string().trim().email("Invalid email address"),
+  email: z.string().trim().email("Invalid email address").or(z.literal("")).optional(),
   phone: z.string().trim().min(7, "Phone number must be at least 7 digits"),
   address: z.string().trim().min(3, "Address is required"),
   contactPerson: z.string().optional(),
