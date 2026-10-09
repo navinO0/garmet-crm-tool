@@ -1327,6 +1327,9 @@ function OrdersContent() {
               </strong>{" "}
               for <strong className="text-zinc-900 dark:text-zinc-100">{orderToDelete?.clientName}</strong>?
             </p>
+            <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 text-[11px] leading-relaxed text-zinc-500">
+              🛡️ <strong>Soft-Delete Guarantee:</strong> This order will not be permanently lost. It will be moved to <strong>Deleted Orders History</strong> with full audit trail, where it can be reviewed and restored anytime.
+            </div>
 
             <div className="space-y-1.5 pt-1">
               <Label htmlFor="delReason" className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
