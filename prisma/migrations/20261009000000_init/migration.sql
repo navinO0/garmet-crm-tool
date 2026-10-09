@@ -1,6 +1,3 @@
--- CreateSchema
-CREATE SCHEMA IF NOT EXISTS "public";
-
 -- CreateTable
 CREATE TABLE "Client" (
     "id" TEXT NOT NULL,
@@ -47,9 +44,6 @@ CREATE TABLE "BulkOrder" (
     "labelInitials" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "isDeleted" BOOLEAN NOT NULL DEFAULT false,
-    "deletedAt" TIMESTAMP(3),
-    "deleteReason" TEXT,
 
     CONSTRAINT "BulkOrder_pkey" PRIMARY KEY ("id")
 );

@@ -22,9 +22,10 @@ A specialized ERP and CRM tool for bespoke tailoring, couture boutique managemen
 ### 2. Environment Variables
 Create or verify `.env` in the project root:
 ```env
-DATABASE_URL="postgresql://<user>:<password>@localhost:5432/<database_name>?schema=public"
+DATABASE_URL="postgresql://<user>:<password>@<host>:<port>/<database_name>?schema=garment_production"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
+> **Multi-Schema Note**: In shared PostgreSQL databases (such as Railway clusters), always append `?schema=garment_production` to isolate application tables from other services.
 
 ### 3. Install Dependencies & Generate Prisma Client
 ```bash
@@ -36,7 +37,7 @@ npx prisma generate
 ```bash
 npm run dev
 ```
-> **Automatic Migration on Start**: Running `npm run dev` or `npm start` automatically executes `prisma migrate deploy` before launching Next.js, ensuring any pending schema migrations are applied immediately to the database.
+> **Automatic Migration on Start**: Running `npm run dev` or `npm start` automatically executes `node scripts/run-migrations.mjs` before launching Next.js, safely applying all versioned migrations (and automatically resolving the baseline if connecting to an existing un-baselined schema).
 
 Open [http://localhost:3000](http://localhost:3000) to view the application.
 
@@ -44,9 +45,10 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ## 🗄️ Database & Migration Guide
 
-### PostgreSQL Architecture & Baseline
-The database schema has been migrated to PostgreSQL. Stale SQLite migrations have been consolidated into a clean PostgreSQL baseline:
-- Baseline migration: `prisma/migrations/20261009000000_init/migration.sql`
+### PostgreSQL Architecture & Versioned Migrations
+The database schema uses PostgreSQL with versioned Prisma migrations:
+1. `20261009000000_init`: Baseline schema for `garment_production` tables.
+2. `20261009000001_add_soft_delete_to_bulk_order`: Adds soft-delete tracking (`isDeleted`, `deletedAt`, `deleteReason`) to `BulkOrder`.
 - Provider lock: `prisma/migrations/migration_lock.toml` configured for `provider = "postgresql"`
 
 ### Schema Models

@@ -3,8 +3,7 @@ set -e
 
 # Run Prisma migrations if DATABASE_URL is defined
 if [ -n "$DATABASE_URL" ]; then
-  echo "=> Applying pending database migrations with Prisma..."
-  npx prisma migrate deploy || echo "=> Database migration failed or database is not reachable."
+  node scripts/run-migrations.mjs || echo "=> Database migration failed or database is not reachable."
 fi
 
 # Start Next.js standalone server
