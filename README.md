@@ -36,6 +36,8 @@ npx prisma generate
 ```bash
 npm run dev
 ```
+> **Automatic Migration on Start**: Running `npm run dev` or `npm start` automatically executes `prisma migrate deploy` before launching Next.js, ensuring any pending schema migrations are applied immediately to the database.
+
 Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ---

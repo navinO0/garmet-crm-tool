@@ -1,10 +1,10 @@
 #!/bin/sh
 set -e
 
-# Optional: Run Prisma db push if DATABASE_URL is defined
+# Run Prisma migrations if DATABASE_URL is defined
 if [ -n "$DATABASE_URL" ]; then
-  echo "=> Checking/Synchronizing database schema with Prisma..."
-  npx prisma db push --skip-generate 2>/dev/null || echo "=> Database push skipped or will be handled externally."
+  echo "=> Applying pending database migrations with Prisma..."
+  npx prisma migrate deploy || echo "=> Database migration failed or database is not reachable."
 fi
 
 # Start Next.js standalone server
